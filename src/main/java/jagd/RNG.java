@@ -2,6 +2,7 @@ package jagd;
 
 import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.utils.IntArray;
 
 import java.io.Serializable;
 import java.util.*;
@@ -281,6 +282,18 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
+     * Mutates the array arr by switching the contents at pos1 and pos2.
+     * @param arr an array of T; must not be null
+     * @param pos1 an index into arr; must be at least 0 and no greater than arr.length
+     * @param pos2 an index into arr; must be at least 0 and no greater than arr.length
+     */
+    private static void swap(int[] arr, int pos1, int pos2) {
+        final int tmp = arr[pos1];
+        arr[pos1] = arr[pos2];
+        arr[pos2] = tmp;
+    }
+
+    /**
      * Shuffle an array using the Fisher-Yates algorithm and returns a shuffled copy.
      * GWT-compatible since GWT 2.8.0, which is the default if you use libGDX 1.9.5 or higher.
      * <br>
@@ -315,6 +328,21 @@ public class RNG extends Random implements Serializable {
             swap(elements, i - 1, nextInt(i));
         }
         return elements;
+    }
+
+    /**
+     * Shuffles an IntArray in-place using the Fisher-Yates algorithm.
+     * <br>
+     * <a href="https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle">Wikipedia has more on this algorithm</a>.
+     *
+     * @param array an IntArray to shuffle; <b>will</b> be modified
+     */
+    public void shuffleInPlace(IntArray array) {
+        final int size = array.size;
+        final int[] elements = array.items;
+        for (int i = size; i > 1; i--) {
+            swap(elements, i - 1, nextInt(i));
+        }
     }
 
     /**
