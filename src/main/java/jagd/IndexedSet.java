@@ -59,9 +59,9 @@ import java.util.*;
  * </p>
  * <p>
  * This class allows approximately constant-time lookup of keys or values by their index in the ordering, which can
- * allow some novel usage of the data structure. OrderedSet can be used like a list of unique elements, keeping order
- * like a list does but also allowing rapid checks for whether an item exists in the OrderedSet, and {@link OrderedMap}
- * can be used like that but with values associated as well (where OrderedSet uses contains(), OrderedMap uses
+ * allow some novel usage of the data structure. IndexedSet can be used like a list of unique elements, keeping order
+ * like a list does but also allowing rapid checks for whether an item exists in the IndexedSet, and {@link IndexedMap}
+ * can be used like that but with values associated as well (where IndexedSet uses contains(), IndexedMap uses
  * containsKey()). You can also set the item at a position with {@link #addAt(Object, int)}, or alter an item while
  * keeping index the same with {@link #alter(Object, Object)}. Reordering works here too, both with completely random
  * orders from {@link #shuffle(RNG)} or with a previously-generated ordering from {@link #reorder(int...)} (you can
@@ -70,7 +70,7 @@ import java.util.*;
  * </p>
  * <p>
  * You can pass an {@link CrossHash.IHasher} instance such as {@link CrossHash#generalHasher} as an extra parameter to
- * most of this class' constructors, which allows the OrderedSet to use arrays (usually primitive arrays) as items. If
+ * most of this class' constructors, which allows the IndexedSet to use arrays (usually primitive arrays) as items. If
  * you expect only one type of array, you can use an instance like {@link CrossHash#intHasher} to hash int arrays, or
  * the aforementioned generalHasher to hash most kinds of arrays (it can't handle most multi-dimensional arrays well).
  * If you aren't using array items, you don't need to give an IHasher to the constructor and can ignore this feature.
@@ -83,7 +83,7 @@ import java.util.*;
  * @author Sebastiano Vigna (responsible for all the hard parts)
  * @author Tommy Ettinger (mostly responsible for squashing several layers of parent classes into one monster class)
  */
-public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Cloneable {
+public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Cloneable {
     private static final long serialVersionUID = 0L;
     /**
      * The array of keys.
@@ -161,7 +161,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      */
 
     @SuppressWarnings("unchecked")
-    public OrderedSet(final int expected, final float f) {
+    public IndexedSet(final int expected, final float f) {
         if (f <= 0 || f > 1)
             throw new IllegalArgumentException("Load factor must be greater than 0 and smaller than or equal to 1");
         if (expected < 0) throw new IllegalArgumentException("The expected number of elements must be nonnegative");
@@ -181,7 +181,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param expected the expected number of elements in the hash set.
      */
-    public OrderedSet(final int expected) {
+    public IndexedSet(final int expected) {
         this(expected, DEFAULT_LOAD_FACTOR);
     }
 
@@ -190,7 +190,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * {@link #DEFAULT_INITIAL_SIZE} elements and
      * {@link #DEFAULT_LOAD_FACTOR} as load factor.
      */
-    public OrderedSet() {
+    public IndexedSet() {
         this(DEFAULT_INITIAL_SIZE, DEFAULT_LOAD_FACTOR);
     }
 
@@ -200,9 +200,9 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param c a {@link Collection} to be copied into the new hash set.
      * @param f the load factor.
      */
-    public OrderedSet(final Collection<? extends K> c,
+    public IndexedSet(final Collection<? extends K> c,
                       final float f) {
-        this(c.size(), f, (c instanceof OrderedSet) ? ((OrderedSet) c).hasher : CrossHash.defaultHasher);
+        this(c.size(), f, (c instanceof IndexedSet) ? ((IndexedSet) c).hasher : CrossHash.defaultHasher);
         addAll(c);
     }
 
@@ -212,8 +212,8 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param c a {@link Collection} to be copied into the new hash set.
      */
-    public OrderedSet(final Collection<? extends K> c) {
-        this(c, (c instanceof OrderedSet) ? ((OrderedSet) c).f : DEFAULT_LOAD_FACTOR, (c instanceof OrderedSet) ? ((OrderedSet) c).hasher : CrossHash.defaultHasher);
+    public IndexedSet(final Collection<? extends K> c) {
+        this(c, (c instanceof IndexedSet) ? ((IndexedSet) c).f : DEFAULT_LOAD_FACTOR, (c instanceof IndexedSet) ? ((IndexedSet) c).hasher : CrossHash.defaultHasher);
     }
 
     /**
@@ -223,7 +223,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param i a type-specific iterator whose elements will fill the set.
      * @param f the load factor.
      */
-    public OrderedSet(final Iterator<? extends K> i, final float f) {
+    public IndexedSet(final Iterator<? extends K> i, final float f) {
         this(DEFAULT_INITIAL_SIZE, f);
         while (i.hasNext())
             add(i.next());
@@ -235,7 +235,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param i a type-specific iterator whose elements will fill the set.
      */
-    public OrderedSet(final Iterator<? extends K> i) {
+    public IndexedSet(final Iterator<? extends K> i) {
         this(i, DEFAULT_LOAD_FACTOR);
     }
 
@@ -247,10 +247,10 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param length the number of elements to use.
      * @param f      the load factor.
      */
-    public OrderedSet(final K[] a, final int offset,
+    public IndexedSet(final K[] a, final int offset,
                       final int length, final float f) {
         this(length < 0 ? 0 : length, f);
-        if (a == null) throw new NullPointerException("Array passed to OrderedSet constructor cannot be null");
+        if (a == null) throw new NullPointerException("Array passed to IndexedSet constructor cannot be null");
         if (offset < 0) throw new ArrayIndexOutOfBoundsException("Offset (" + offset + ") is negative");
         if (length < 0) throw new IllegalArgumentException("Length (" + length + ") is negative");
         if (offset + length > a.length) {
@@ -269,7 +269,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param offset the first element to use.
      * @param length the number of elements to use.
      */
-    public OrderedSet(final K[] a, final int offset,
+    public IndexedSet(final K[] a, final int offset,
                       final int length) {
         this(a, offset, length, DEFAULT_LOAD_FACTOR);
     }
@@ -280,7 +280,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param a an array to be copied into the new hash set.
      * @param f the load factor.
      */
-    public OrderedSet(final K[] a, final float f) {
+    public IndexedSet(final K[] a, final float f) {
         this(a, 0, a.length, f);
     }
 
@@ -290,7 +290,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param a an array to be copied into the new hash set.
      */
-    public OrderedSet(final K[] a) {
+    public IndexedSet(final K[] a) {
         this(a, DEFAULT_LOAD_FACTOR);
     }
 
@@ -304,7 +304,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param hasher   used to hash items; typically only needed when K is an array, where CrossHash has implementations
      */
     @SuppressWarnings("unchecked")
-    public OrderedSet(final int expected, final float f, CrossHash.IHasher hasher) {
+    public IndexedSet(final int expected, final float f, CrossHash.IHasher hasher) {
         if (f <= 0 || f > 1)
             throw new IllegalArgumentException("Load factor must be greater than 0 and smaller than or equal to 1");
         if (expected < 0) throw new IllegalArgumentException("The expected number of elements must be nonnegative");
@@ -324,7 +324,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param hasher used to hash items; typically only needed when K is an array, where CrossHash has implementations
      */
-    public OrderedSet(CrossHash.IHasher hasher) {
+    public IndexedSet(CrossHash.IHasher hasher) {
         this(DEFAULT_INITIAL_SIZE, DEFAULT_LOAD_FACTOR, hasher);
     }
 
@@ -334,7 +334,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param hasher used to hash items; typically only needed when K is an array, where CrossHash has implementations
      */
-    public OrderedSet(final int expected, CrossHash.IHasher hasher) {
+    public IndexedSet(final int expected, CrossHash.IHasher hasher) {
         this(expected, DEFAULT_LOAD_FACTOR, hasher);
     }
 
@@ -345,7 +345,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param f      the load factor.
      * @param hasher used to hash items; typically only needed when K is an array, where CrossHash has implementations
      */
-    public OrderedSet(final Collection<? extends K> c,
+    public IndexedSet(final Collection<? extends K> c,
                       final float f, CrossHash.IHasher hasher) {
         this(c.size(), f, hasher);
         addAll(c);
@@ -358,7 +358,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param c      a {@link Collection} to be copied into the new hash set.
      * @param hasher used to hash items; typically only needed when K is an array, where CrossHash has implementations
      */
-    public OrderedSet(final Collection<? extends K> c, CrossHash.IHasher hasher) {
+    public IndexedSet(final Collection<? extends K> c, CrossHash.IHasher hasher) {
         this(c, DEFAULT_LOAD_FACTOR, hasher);
     }
 
@@ -370,10 +370,10 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param length the number of elements to use.
      * @param f      the load factor.
      */
-    public OrderedSet(final K[] a, final int offset,
+    public IndexedSet(final K[] a, final int offset,
                       final int length, final float f, CrossHash.IHasher hasher) {
         this(length < 0 ? 0 : length, f, hasher);
-        if (a == null) throw new NullPointerException("Array passed to OrderedSet constructor cannot be null");
+        if (a == null) throw new NullPointerException("Array passed to IndexedSet constructor cannot be null");
         if (offset < 0) throw new ArrayIndexOutOfBoundsException("Offset (" + offset + ") is negative");
         if (length < 0) throw new IllegalArgumentException("Length (" + length + ") is negative");
         if (offset + length > a.length) {
@@ -392,7 +392,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param offset the first element to use.
      * @param length the number of elements to use.
      */
-    public OrderedSet(final K[] a, final int offset,
+    public IndexedSet(final K[] a, final int offset,
                       final int length, CrossHash.IHasher hasher) {
         this(a, offset, length, DEFAULT_LOAD_FACTOR, hasher);
     }
@@ -403,7 +403,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param a an array to be copied into the new hash set.
      * @param f the load factor.
      */
-    public OrderedSet(final K[] a, final float f, CrossHash.IHasher hasher) {
+    public IndexedSet(final K[] a, final float f, CrossHash.IHasher hasher) {
         this(a, 0, a.length, f, hasher);
     }
 
@@ -413,7 +413,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      *
      * @param a an array to be copied into the new hash set.
      */
-    public OrderedSet(final K[] a, CrossHash.IHasher hasher) {
+    public IndexedSet(final K[] a, CrossHash.IHasher hasher) {
         this(a, DEFAULT_LOAD_FACTOR, hasher);
     }
 
@@ -937,7 +937,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * Gets the position in the ordering of the given key, though not as efficiently as some data structures can do it.
      * Returns a value that is at least 0 if it found k, or -1 if k was not present.
      * @param k a key or possible key that this should find the index of
-     * @return the index of k, if present, or -1 if it is not present in this OrderedSet
+     * @return the index of k, if present, or -1 if it is not present in this IndexedSet
      */
     public int indexOf(final Object k)
     {
@@ -949,9 +949,9 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * Swaps the positions in the ordering for the given items, if they are both present. Returns true if the ordering
      * changed as a result of this call, or false if it stayed the same (which can be because left or right was not
      * present, or because left and right are the same reference (so swapping would do nothing)).
-     * @param left an item that should be present in this OrderedSet
-     * @param right an item that should be present in this OrderedSet
-     * @return true if this OrderedSet changed in ordering as a result of this call, or false otherwise
+     * @param left an item that should be present in this IndexedSet
+     * @param right an item that should be present in this IndexedSet
+     * @return true if this IndexedSet changed in ordering as a result of this call, or false otherwise
      */
     public boolean swap(final K left, final K right)
     {
@@ -967,9 +967,9 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * Swaps the given indices in the ordering, if they are both ints between 0 and size. Returns true if the ordering
      * changed as a result of this call, or false if it stayed the same (which can be because left or right referred to
      * an out-of-bounds index, or because left and right are equal (so swapping would do nothing)).
-     * @param left an index of an item in this OrderedSet, at least 0 and less than {@link #size()}
-     * @param right an index of an item in this OrderedSet, at least 0 and less than {@link #size()}
-     * @return true if this OrderedSet changed in ordering as a result of this call, or false otherwise
+     * @param left an index of an item in this IndexedSet, at least 0 and less than {@link #size()}
+     * @param right an index of an item in this IndexedSet, at least 0 and less than {@link #size()}
+     * @return true if this IndexedSet changed in ordering as a result of this call, or false otherwise
      */
     public boolean swapIndices(final int left, final int right)
     {
@@ -1272,7 +1272,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
                 //order.removeValue(pos);
             } else {
                 K curr;
-                final K[] key = OrderedSet.this.key;
+                final K[] key = IndexedSet.this.key;
                 // We have to horribly duplicate the shiftKeys() code because we
                 // need to update next/prev.
                 for (; ; ) {
@@ -1322,7 +1322,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
          */
         @Override
         public void set(K k) {
-            throw new UnsupportedOperationException("set() not supported on OrderedSet iterator");
+            throw new UnsupportedOperationException("set() not supported on IndexedSet iterator");
         }
 
         /**
@@ -1347,7 +1347,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
          */
         @Override
         public void add(K k) {
-            throw new UnsupportedOperationException("add() not supported on OrderedSet iterator");
+            throw new UnsupportedOperationException("add() not supported on IndexedSet iterator");
         }
     }
 
@@ -1504,9 +1504,9 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     @SuppressWarnings("unchecked")
     @GwtIncompatible
     public Object clone() {
-        OrderedSet<K> c;
+        IndexedSet<K> c;
         try {
-            c = (OrderedSet<K>) super.clone();
+            c = (IndexedSet<K>) super.clone();
             c.key = (K[]) new Object[n + 1];
             System.arraycopy(key, 0, c.key, 0, n + 1);
             c.order = new IntArray(order);
@@ -1645,7 +1645,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         final StringBuilder s = new StringBuilder();
         int n = size(), i = 0;
         boolean first = true;
-        s.append("OrderedSet{");
+        s.append("IndexedSet{");
         while (i < n) {
             if (first) first = false;
             else s.append(", ");
@@ -1744,22 +1744,22 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     }
 
     /**
-     * Gets a random value from this OrderedSet in constant time, using the given RNG to generate a random number.
+     * Gets a random value from this IndexedSet in constant time, using the given RNG to generate a random number.
      *
      * @param rng used to generate a random index for a value
-     * @return a random value from this OrderedSet
+     * @return a random value from this IndexedSet
      */
     public K randomItem(RNG rng) {
         return getAt(rng.nextInt(order.size));
     }
 
     /**
-     * Randomly alters the iteration order for this OrderedSet using the given RNG to shuffle.
+     * Randomly alters the iteration order for this IndexedSet using the given RNG to shuffle.
      *
      * @param rng used to generate a random ordering
      * @return this for chaining
      */
-    public OrderedSet<K> shuffle(RNG rng) {
+    public IndexedSet<K> shuffle(RNG rng) {
         if (size < 2 || rng == null)
             return this;
         rng.shuffleInPlace(order);
@@ -1769,7 +1769,7 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     }
 
     /**
-     * Given an array or varargs of replacement indices for this OrderedSet's iteration order, reorders this so the
+     * Given an array or varargs of replacement indices for this IndexedSet's iteration order, reorders this so the
      * first item in the returned version is the same as {@code getAt(ordering[0])} (with some care taken for negative
      * or too-large indices), the second item in the returned version is the same as {@code getAt(ordering[1])}, etc.
      * <br>
@@ -1779,13 +1779,13 @@ public class OrderedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * affected as {@code size()}, and reversed distances are measured from the end of this Set's entries instead of
      * the end of ordering. Duplicate values in ordering will produce duplicate values in the returned Set.
      * <br>
-     * This method modifies this OrderedSet in-place and also returns it for chaining.
+     * This method modifies this IndexedSet in-place and also returns it for chaining.
      *
      * @param ordering an array or varargs of int indices, where the nth item in ordering changes the nth item in this
      *                 Set to have the value currently in this Set at the index specified by the value in ordering
      * @return this for chaining, after modifying it in-place
      */
-    public OrderedSet<K> reorder(int... ordering) {
+    public IndexedSet<K> reorder(int... ordering) {
         DataCommon.reorder(order, ordering);
         first = order.get(0);
         last = order.peek();

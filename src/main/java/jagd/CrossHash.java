@@ -1006,8 +1006,8 @@ public class CrossHash {
     }
 
     /**
-     * This IHasher is the one you should use if you aren't totally certain what types will go in an OrderedMap's keys
-     * or an OrderedSet's items, since it can handle mixes of elements.
+     * This IHasher is the one you should use if you aren't totally certain what types will go in an IndexedMap's keys
+     * or an IndexedSet's items, since it can handle mixes of elements.
      */
     public static final IHasher generalHasher = new GeneralHasher();
 

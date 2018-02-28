@@ -426,7 +426,7 @@ public class RNG extends Random implements Serializable {
 
     /**
      * Generates a random permutation of the range from 0 (inclusive) to length (exclusive).
-     * Useful for passing to OrderedMap or OrderedSet's reorder() methods.
+     * Useful for passing to IndexedMap or IndexedSet's reorder() methods.
      *
      * @param length the size of the ordering to produce
      * @return a random ordering containing all ints from 0 to length (exclusive)
@@ -440,7 +440,7 @@ public class RNG extends Random implements Serializable {
     /**
      * Generates a random permutation of the range from 0 (inclusive) to length (exclusive) and stores it in
      * the dest parameter, avoiding allocations.
-     * Useful for passing to OrderedMap or OrderedSet's reorder() methods.
+     * Useful for passing to IndexedMap or IndexedSet's reorder() methods.
      *
      * @param length the size of the ordering to produce
      * @param dest   the destination array; will be modified

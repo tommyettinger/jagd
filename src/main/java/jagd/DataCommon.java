@@ -3,7 +3,7 @@ package jagd;
 import com.badlogic.gdx.utils.IntArray;
 
 /**
- * Code used internally for dealing with the hashing and ordering for OrderedMap, OrderedSet, and other data structures.
+ * Code used internally for dealing with the hashing and ordering for IndexedMap, IndexedSet, and other data structures.
  * Has some methods and constants that may be useful in other kinds of code.
  * Created by Tommy Ettinger on 7/28/2017.
  */
