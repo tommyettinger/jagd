@@ -31,88 +31,194 @@ public class PoissonDisk {
     }
 
     /**
-     * Get a list of Coords, each randomly positioned around the given center out to the given radius (measured with
-     * Euclidean distance, so a true circle), but with the given minimum distance from any other Coord in the list.
-     * The parameters maxX and maxY should typically correspond to the width and height of the map; no points will have
-     * positions with x equal to or greater than maxX and the same for y and maxY; similarly, no points will have
-     * negative x or y.
-     * @param center the center of the circle to spray Coords into
-     * @param radius the radius of the circle to spray Coords into
-     * @param minimumDistance the minimum distance between Coords, in Euclidean distance as a float.
-     * @return an ArrayList of Coord that satisfy the minimum distance; the length of the array can vary
+     * Get a IndexedSet of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * @param center the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
      */
-    public static IndexedSet<Vector2> sampleCircle(Vector2 center, float radius, float minimumDistance)
+    public static IndexedSet<Vector2> sampleCircle(Vector2 center, float radius, float uniformDistance)
     {
-        return sampleCircle(center, radius, minimumDistance, defaultPointsPlaced, new RNG());
+        return sampleCircle(center, radius, uniformDistance, defaultPointsPlaced, new RNG());
     }
 
     /**
-     * Get a list of Coords, each randomly positioned around the given center out to the given radius (measured with
-     * Euclidean distance, so a true circle), but with the given minimum distance from any other Coord in the list.
-     * The parameters maxX and maxY should typically correspond to the width and height of the map; no points will have
-     * positions with x equal to or greater than maxX and the same for y and maxY; similarly, no points will have
-     * negative x or y.
-     * @param center the center of the circle to spray Coords into
-     * @param radius the radius of the circle to spray Coords into
-     * @param minimumDistance the minimum distance between Coords, in Euclidean distance as a float.
+     * Get a set of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * @param center the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
      * @param pointsPerIteration with small radii, this can be around 5; with larger ones, 30 is reasonable
      * @param rng an RNG to use for all random sampling.
-     * @return an ArrayList of Coord that satisfy the minimum distance; the length of the array can vary
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
      */
-    public static IndexedSet<Vector2> sampleCircle(Vector2 center, float radius, float minimumDistance,
+    public static IndexedSet<Vector2> sampleCircle(Vector2 center, float radius, float uniformDistance,
                                                    int pointsPerIteration, RNG rng)
     {
         return sample(center.x -radius, center.y -radius, center.x + radius, center.y + radius,
-                radius * radius, minimumDistance, pointsPerIteration, rng);
+                radius * radius, uniformDistance, uniformDistance, pointsPerIteration, -1, rng);
     }
-
     /**
-     * Get a list of Coords, each randomly positioned within the rectangle between the given minPosition and
-     * maxPosition, but with the given minimum distance from any other Coord in the list.
-     * The parameters maxX and maxY should typically correspond to the width and height of the map; no points will have
-     * positions with x equal to or greater than maxX and the same for y and maxY; similarly, no points will have
-     * negative x or y.
-     * @param minPosition the Coord with the lowest x and lowest y to be used as a corner for the bounding box
-     * @param maxPosition the Coord with the highest x and highest y to be used as a corner for the bounding box
-     * @param minimumDistance the minimum distance between Coords, in Euclidean distance as a float.
-     * @return an ArrayList of Coord that satisfy the minimum distance; the length of the array can vary
+     * Get a IndexedSet of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * @param centerX the x-coordinate of the center of the circle to spray Vector2s into
+     * @param centerY the y-coordinate of the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
      */
-    public static IndexedSet<Vector2> sampleRectangle(Vector2 minPosition, Vector2 maxPosition, float minimumDistance)
+    public static IndexedSet<Vector2> sampleCircle(float centerX, float centerY, float radius, float uniformDistance)
     {
-        return sampleRectangle(minPosition, maxPosition, minimumDistance, defaultPointsPlaced, new RNG());
+        return sample(centerX - radius, centerY - radius, centerX + radius, centerY + radius,
+                radius * radius, uniformDistance, uniformDistance, defaultPointsPlaced, -1, new RNG());
+
     }
 
     /**
-     * Get a list of Coords, each randomly positioned within the rectangle between the given minPosition and
-     * maxPosition, but with the given minimum distance from any other Coord in the list.
-     * The parameters maxX and maxY should typically correspond to the width and height of the map; no points will have
-     * positions with x equal to or greater than maxX and the same for y and maxY; similarly, no points will have
-     * negative x or y.
-     * @param minPosition the Coord with the lowest x and lowest y to be used as a corner for the bounding box
-     * @param maxPosition the Coord with the highest x and highest y to be used as a corner for the bounding box
-     * @param minimumDistance the minimum distance between Coords, in Euclidean distance as a float.
+     * Get a set of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * @param centerX the x-coordinate of the center of the circle to spray Vector2s into
+     * @param centerY the y-coordinate of the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @param pointsPerIteration with small radii, this can be around 5; with larger ones, 30 is reasonable
+     * @param rng an RNG to use for all random sampling.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleCircle(float centerX, float centerY, float radius, float uniformDistance,
+                                                   int pointsPerIteration, RNG rng)
+    {
+        return sample(centerX - radius, centerY - radius, centerX + radius, centerY + radius,
+                radius * radius, uniformDistance, uniformDistance, pointsPerIteration, -1, rng);
+    }
+
+    /**
+     * Get an IndexedSet of Vector2, each randomly positioned within the rectangle between the given minPosition and
+     * maxPosition, but with the given uniform distance from the closest Vector2 in the set.
+     * @param minPosition the Vector2 with the lowest x and lowest y to be used as a corner for the bounding box
+     * @param maxPosition the Vector2 with the highest x and highest y to be used as a corner for the bounding box
+     * @param uniformDistance the uniform distance between Vector2s, in Euclidean distance as a float.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleRectangle(Vector2 minPosition, Vector2 maxPosition, float uniformDistance)
+    {
+        return sample(minPosition.x, minPosition.y, maxPosition.x, maxPosition.y, 0f,
+                uniformDistance, uniformDistance, defaultPointsPlaced, -1, new RNG());
+    }
+
+    /**
+     * Get a IndexedSet of Vector2, each randomly positioned within the rectangle between the given minPosition and
+     * maxPosition, but with the given minimum distance from the closest Vector2 in the set.
+     * @param minPosition the Vector2 with the lowest x and lowest y to be used as a corner for the bounding box
+     * @param maxPosition the Vector2 with the highest x and highest y to be used as a corner for the bounding box
+     * @param uniformDistance the uniform distance between Vector2s, in Euclidean distance as a float.
      * @param pointsPerIteration with small areas, this can be around 5; with larger ones, 30 is reasonable
      * @param rng an RNG to use for all random sampling.
-     * @return an ArrayList of Coord that satisfy the minimum distance; the length of the array can vary
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
      */
-    public static IndexedSet<Vector2> sampleRectangle(Vector2 minPosition, Vector2 maxPosition, float minimumDistance,
+    public static IndexedSet<Vector2> sampleRectangle(Vector2 minPosition, Vector2 maxPosition, float uniformDistance,
                                                       int pointsPerIteration, RNG rng)
     {
-        return sample(minPosition.x, minPosition.y, maxPosition.x, maxPosition.y, 0f, minimumDistance, pointsPerIteration, rng);
+        return sample(minPosition.x, minPosition.y, maxPosition.x, maxPosition.y, 0f, uniformDistance, uniformDistance, pointsPerIteration, -1, rng);
+    }
+
+    /**
+     * Get a IndexedSet of Vector2, each randomly positioned within the rectangle between the given minX,minY and
+     * maxX,maxY, but with the given uniform distance from the closest Vector2 in the Set.
+     * @param minX the lowest x coordinate for the bounding box
+     * @param minY the lowest y coordinate for the bounding box
+     * @param maxX the highest x coordinate for the bounding box
+     * @param maxY the highest y coordinate for the bounding box
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleRectangle(float minX, float minY, float maxX, float maxY, float uniformDistance, int pointLimit)
+    {
+        return sample(minX, minY, maxX, maxY, 0f,
+                uniformDistance, uniformDistance, defaultPointsPlaced, pointLimit, new RNG());
+    }
+
+    /**
+     * Get a Set of Vector2 points, each randomly positioned within the rectangle between the given minX,minY and
+     * maxX,maxY, but with the given uniform distance from the closest Vector2 in the Set.
+     * @param minX the lowest x coordinate for the bounding box
+     * @param minY the lowest y coordinate for the bounding box
+     * @param maxX the highest x coordinate for the bounding box
+     * @param maxY the highest y coordinate for the bounding box
+     * @param uniformDistance the uniform distance between Vector2s, in Euclidean distance as a float.
+     * @param pointsPerIteration with small areas, this can be around 5; with larger ones, 30 is reasonable
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @param rng an RNG to use for all random sampling.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the Set can vary
+     */
+    public static IndexedSet<Vector2> sampleRectangle(float minX, float minY, float maxX, float maxY, float uniformDistance,
+                                                      int pointsPerIteration, int pointLimit, RNG rng)
+    {
+        return sample(minX, minY, maxX, maxY, 0f, uniformDistance, uniformDistance, pointsPerIteration, pointLimit, rng);
+    }
+
+    /**
+     * Get a IndexedSet of Vector2, each randomly positioned within the rectangle between the given minX,minY and
+     * maxX,maxY, but with the given minimum and maximum distance from the closest Vector2 in the Set.
+     * @param minX the lowest x coordinate for the bounding box
+     * @param minY the lowest y coordinate for the bounding box
+     * @param maxX the highest x coordinate for the bounding box
+     * @param maxY the highest y coordinate for the bounding box
+     * @param minimumDistance the minimum distance between a Vector2 and its closest neighbor, in Euclidean distance as a float.
+     * @param maximumDistance the minimum distance between a Vector2 and its closest neighbor, in Euclidean distance as a float.
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleRectangle(float minX, float minY, float maxX, float maxY,  float minimumDistance, float maximumDistance,int pointLimit)
+    {
+        return sample(minX, minY, maxX, maxY, 0f,
+                minimumDistance, maximumDistance, defaultPointsPlaced, pointLimit, new RNG());
+    }
+
+    /**
+     * Get a Set of Vector2 points, each randomly positioned within the rectangle between the given minX,minY and
+     * maxX,maxY, but with the given minimum and maximum distance from the closest Vector2 in the Set.
+     * @param minX the lowest x coordinate for the bounding box
+     * @param minY the lowest y coordinate for the bounding box
+     * @param maxX the highest x coordinate for the bounding box
+     * @param maxY the highest y coordinate for the bounding box
+     * @param minimumDistance the minimum distance between a Vector2 and its closest neighbor, in Euclidean distance as a float.
+     * @param maximumDistance the minimum distance between a Vector2 and its closest neighbor, in Euclidean distance as a float.
+     * @param pointsPerIteration with small areas, this can be around 5; with larger ones, 30 is reasonable
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @param rng an RNG to use for all random sampling.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the Set can vary
+     */
+    public static IndexedSet<Vector2> sampleRectangle(float minX, float minY, float maxX, float maxY, float minimumDistance, float maximumDistance,
+                                                      int pointsPerIteration, int pointLimit, RNG rng)
+    {
+        return sample(minX, minY, maxX, maxY, 0f, minimumDistance, maximumDistance, pointsPerIteration, pointLimit, rng);
     }
 
     private static IndexedSet<Vector2> sample(float minX, float minY, float maxX, float maxY, float rejectionDistance,
-                                              float minimumDistance, int pointsPerIteration, RNG rng)
+                                              float minimumDistance, float maximumDistance, int pointsPerIteration,
+                                              int pointLimit, RNG rng)
     {
-
+        IndexedSet<Vector2> points;
+        if(pointLimit < 0)
+        {
+            pointLimit = Integer.MAX_VALUE; // collections can't actually hold this many; we'll never reach it
+            points = new IndexedSet<Vector2>(256);
+        }
+        else 
+            points = new IndexedSet<Vector2>(pointLimit);
+        if(pointLimit == 0)
+            return points;
+        maximumDistance = Math.nextUp(maximumDistance);
         Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
         Vector2 dimensions = new Vector2(maxX - minX, maxY - minY);
         float cellSize = Math.max(minimumDistance / rootTwo, 0.25f);
         int gridWidth = (int)(dimensions.x / cellSize) + 1;
         int gridHeight = (int)(dimensions.y / cellSize) + 1;
         Vector2[][] grid = new Vector2[gridWidth][gridHeight];
-        ArrayList<Vector2> activePoints = new ArrayList<Vector2>();
-        IndexedSet<Vector2> points = new IndexedSet<Vector2>(128);
+        ArrayList<Vector2> activePoints = new ArrayList<Vector2>(pointLimit >> 2);
 
         //add first point
         boolean added = false;
@@ -133,7 +239,7 @@ public class PoissonDisk {
         }
         //end add first point
 
-        while (activePoints.size() != 0)
+        while (activePoints.size() != 0 && points.size < pointLimit)
         {
             int listIndex = rng.nextInt(activePoints.size());
 
@@ -144,8 +250,7 @@ public class PoissonDisk {
             {
                 //add next point
                 //get random point around
-                float d = rng.nextFloat();
-                float radius = minimumDistance + minimumDistance * d;
+                float radius = rng.between(minimumDistance, maximumDistance);
                 float angle = pi2 * rng.nextFloat();
 
                 Vector2 q = new Vector2(point.x + radius * MathUtils.sin(angle), point.y + radius * MathUtils.cos(angle));

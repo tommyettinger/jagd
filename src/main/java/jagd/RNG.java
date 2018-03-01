@@ -70,17 +70,29 @@ public class RNG extends Random implements Serializable {
     public RNG(CharSequence seedString) {
         this(CrossHash.hash64(seedString));
     }
-    
+
     /**
-     * Returns a value from an even distribution from min (inclusive) to max
+     * Returns a double from an even distribution from min (inclusive) to max
      * (exclusive).
      *
      * @param min the minimum bound on the return value (inclusive)
      * @param max the maximum bound on the return value (exclusive)
-     * @return the found value
+     * @return the found double
      */
     public double between(double min, double max) {
         return min + (max - min) * nextDouble();
+    }
+
+    /**
+     * Returns a float from an even distribution from min (inclusive) to max
+     * (exclusive).
+     *
+     * @param min the minimum bound on the return value (inclusive)
+     * @param max the maximum bound on the return value (exclusive)
+     * @return the found float
+     */
+    public float between(float min, float max) {
+        return min + (max - min) * nextFloat();
     }
 
     /**

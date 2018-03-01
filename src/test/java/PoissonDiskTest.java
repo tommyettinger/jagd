@@ -14,7 +14,7 @@ public class PoissonDiskTest {
     @Test
     public void testPoisson()
     {
-        IndexedSet<Vector2> points = PoissonDisk.sampleCircle(new Vector2(31.5f, 31.5f), 30, 3.5f, 50, new RNG("Fish"));
+        IndexedSet<Vector2> points = PoissonDisk.sampleRectangle(0f, 0f, 63.5f, 63.5f, 3f, 25, 500, new RNG("Fish"));
         final int HEIGHT = 64, WIDTH = 64;
         char[][] grid = new char[HEIGHT][WIDTH];
         for (int y = 0; y < HEIGHT; y++) {
