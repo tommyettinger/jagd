@@ -648,6 +648,21 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
+     * Advances or rolls back the RNG's state without actually generating each number. Skips forward
+     * or backward a number of steps specified by advance, where a step is equal to one call to {@link #nextLong()} (or
+     * {@link #nextInt()} or {@link #nextInt(int)}, but not not {@link #nextLong(long)}) and returns the random number
+     * produced at that step (you can get the state with {@link #getState()}).
+     *
+     * @param advance Number of future generations to skip over; can be negative to backtrack, 0 gets the most-recently-generated number
+     * @return the random long generated after skipping forward or backwards by {@code advance} numbers
+     */
+    public final long skip(long advance) {
+        final long s = (state += 0x6C8E9CF570932BD5L * advance);
+        final long z = (s ^ (s >>> 25)) * (s | 0xA529L);
+        return z ^ (z >>> 22);
+    }
+
+    /**
      * Generates random bytes and places them into the given byte array, modifying it in-place.
      * The number of random bytes produced is equal to the length of the byte array. Unlike the
      * method in java.util.Random, this generates 8 bytes at a time, which can be more efficient
@@ -731,7 +746,7 @@ public class RNG extends Random implements Serializable {
         if (bitCount == 32)
             return nextLong();
         boolean high = bitCount > 32;
-        int altered = (high ? 64 - bitCount : bitCount), lsb = altered & ~(altered - 1);
+        int altered = (high ? 64 - bitCount : bitCount), lsb = altered & ~(altered - 1); // lowestOneBit, GWT-compatible
         long data = nextLong();
         for (int i = lsb << 1; i <= 16; i <<= 1) {
             if ((altered & i) == 0)
