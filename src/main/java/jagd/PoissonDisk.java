@@ -211,7 +211,6 @@ public class PoissonDisk {
             points = new IndexedSet<Vector2>(pointLimit);
         if(pointLimit == 0)
             return points;
-        maximumDistance = Math.nextUp(maximumDistance);
         Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
         Vector2 dimensions = new Vector2(maxX - minX, maxY - minY);
         float cellSize = Math.max(minimumDistance / rootTwo, 0.25f);
@@ -250,7 +249,7 @@ public class PoissonDisk {
             {
                 //add next point
                 //get random point around
-                float radius = rng.between(minimumDistance, maximumDistance);
+                float radius = rng.betweenInclusive(minimumDistance, maximumDistance);
                 float angle = pi2 * rng.nextFloat();
 
                 Vector2 q = new Vector2(point.x + radius * MathUtils.sin(angle), point.y + radius * MathUtils.cos(angle));

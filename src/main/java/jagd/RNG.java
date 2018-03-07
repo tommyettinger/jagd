@@ -96,6 +96,28 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
+     * Returns a double from an even distribution from min (inclusive) to max (inclusive).
+     *
+     * @param min the minimum bound on the return value (inclusive)
+     * @param max the maximum bound on the return value (inclusive)
+     * @return the found double
+     */
+    public double betweenInclusive(double min, double max) {
+        return min + (max - min) * nextDoubleInclusive();
+    }
+
+    /**
+     * Returns a float from an even distribution from min (inclusive) to max (inclusive).
+     *
+     * @param min the minimum bound on the return value (inclusive)
+     * @param max the maximum bound on the return value (inclusive)
+     * @return the found float
+     */
+    public float betweenInclusive(float min, float max) {
+        return min + (max - min) * nextFloatInclusive();
+    }
+
+    /**
      * Returns a value between min (inclusive) and max (exclusive).
      * <p>
      * The inclusive and exclusive behavior is to match the behavior of the
@@ -570,6 +592,15 @@ public class RNG extends Random implements Serializable {
         //this is here for a record of another possibility; it can't generate quite a lot of possible values though
         //return Double.longBitsToDouble(0x3FF0000000000000L | random.nextLong() >>> 12) - 1.0;
     }
+    /**
+     * Gets a random double between 0.0 inclusive and 1.0 inclusive.
+     *
+     * @return a double between 0.0 (inclusive) and 1.0 (inclusive)
+     */
+    public double nextDoubleInclusive()
+    {
+        return (nextLong() & 0x1fffffffffffffL) * 0x1.0000000000001p-53;
+    }
 
     /**
      * This returns a random double between 0.0 (inclusive) and outer (exclusive). The value for outer can be positive
@@ -584,6 +615,18 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
+     * This returns a random double between 0.0 (inclusive) and outer (inclusive). The value for outer can be positive
+     * or negative. Because of how math on doubles works, there are at most 2 to the 53 values this can return for any
+     * given outer bound, and very large values for outer will not necessarily produce all numbers you might expect.
+     *
+     * @param outer the outer inclusive bound as a double; can be negative or positive
+     * @return a double between 0.0 (inclusive) and outer (inclusive)
+     */
+    public double nextDoubleInclusive(final double outer) {
+        return (nextLong() & 0x1fffffffffffffL) * 0x1.0000000000001p-53 * outer;
+    }
+
+    /**
      * Gets a random float between 0.0f inclusive and 1.0f exclusive.
      * This returns a maximum of 0.99999994 because that is the largest float value that is less than 1.0f .
      *
@@ -591,6 +634,15 @@ public class RNG extends Random implements Serializable {
      */
     public float nextFloat() {
         return (nextLong() & 0xFFFFFF) * 0x1p-24f;
+    }
+
+    /**
+     * Gets a random float between 0.0f inclusive and 1.0f inclusive.
+     *
+     * @return a float between 0f (inclusive) and 1f (inclusive)
+     */
+    public float nextFloatInclusive() {
+        return (nextLong() & 0xFFFFFF) * 0x1.000002p-24f;
     }
     /**
      * This returns a random float between 0.0f (inclusive) and outer (exclusive). The value for outer can be positive
@@ -602,6 +654,17 @@ public class RNG extends Random implements Serializable {
      */
     public float nextFloat(final float outer) {
         return (nextLong() & 0xFFFFFF) * 0x1p-24f * outer;
+    }
+    /**
+     * This returns a random float between 0.0f (inclusive) and outer (inclusive). The value for outer can be positive
+     * or negative. Because of how math on floats works, there are at most 2 to the 24 values this can return for any
+     * given outer bound, and very large values for outer will not necessarily produce all numbers you might expect.
+     *
+     * @param outer the outer inclusive bound as a float; can be negative or positive
+     * @return a float between 0f (inclusive) and outer (inclusive)
+     */
+    public float nextFloatInclusive(final float outer) {
+        return (nextLong() & 0xFFFFFF) * 0x1.000002p-24f * outer;
     }
 
     /**
