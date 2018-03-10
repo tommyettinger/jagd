@@ -2859,8 +2859,8 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
 
     /**
      * Makes an empty IndexedMap (OM); needs key and value types to be specified in order to work. For an empty
-     * IndexedMap with String keys and Coord values, you could use {@code Maker.<String, Coord>makeOM()}. Using
-     * the new keyword is probably just as easy in this case; this method is provided for completeness relative to
+     * IndexedMap with String keys and GridPoint2 values, you could use {@code Maker.<String, GridPoint2>makeOM()}.
+     * Using the new keyword is probably just as easy in this case; this method is provided for completeness relative to
      * makeMap() with 2 or more parameters.
      * @param <K> the type of keys in the returned IndexedMap; cannot be inferred and must be specified
      * @param <V> the type of values in the returned IndexedMap; cannot be inferred and must be specified

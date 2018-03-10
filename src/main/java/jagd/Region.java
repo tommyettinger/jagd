@@ -7,36 +7,37 @@ import java.io.Serializable;
 import java.util.*;
 
 /**
- * Region encoding of on/off information about areas using bitsets; uncompressed (fatty), but fast (greased lightning).
- * This can handle any size of 2D data, and is not strictly limited to 256x256 as CoordPacker is. It stores several long
+ * Region encoding of on/off information about areas using bitsets; optimized for bulk operations on similar areas.
+ * This can handle any size of 2D data, and is not strictly limited to some size. It stores several long
  * arrays and uses each bit in one of those numbers to represent a single point, though sometimes this does waste bits
  * if the height of the area this encodes is not a multiple of 64 (if you store a 80x64 map, this uses 80 longs; if you
- * store an 80x65 map, this uses 160 longs, 80 for the first 64 rows and 80 more to store the next row). It's much
- * faster than CoordPacker at certain operations (anything that expands or retracts an area, including
- * {@link #expand()}), {@link #retract()}), {@link #fringe()}), {@link #surface()}, and {@link #flood(Region)},
- * and slightly faster on others, like {@link #and(Region)} (called intersectPacked() in CoordPacker) and
- * {@link #or(Region)} (called unionPacked() in CoordPacker).
+ * store an 80x65 map, this uses 160 longs, 80 for the first 64 rows and 80 more to store the next row). It's fairly
+ * fast as a general-use way of handling on/off areas, but it isn't very useful for storing more than two states in a
+ * position, or if positions need floating-point coordinates.
  * <br>
  * Each Region is mutable, and instance methods typically modify that instance and return it for chaining. There
  * are exceptions, usually where multiple Region values are returned and the instance is not modified.
  * <br>
- * Typical usage involves constructing a Region from some input data, like a char[][] for a map or a double[][]
- * from DijkstraMap, and modifying it spatially with expand(), retract(), flood(), etc. It's common to mix in data from
- * other GreasedRegions with and() (which gets the intersection of two GreasedRegions and stores it in one), or() (which
- * is like and() but for the union), xor() (like and() but for exclusive or, finding only cells that are on in exactly
- * one of the two GreasedRegions), and andNot() (which can be considered the "subtract another region from me" method).
- * There are 8-way (Chebyshev distance) variants on all of the spatial methods, and methods without "8way" in the name
- * are either 4-way (Manhattan distance) or not affected by distance measurement. Once you have a Region, you may
- * want to get a single random point from it (use {@link #singleRandom(RNG)}), get several random points from it (use
- * {@link #randomPortion(RNG, int)} for random sampling or {@link #quasiRandomSeparated(double)} (double, RNG)} for points that have
- * some distance between each other), or get all points from it (use {@link #asCoords()}. You may also want to produce
- * some 2D data from one or more GreasedRegions, such as with {@link #sum(Region...)} or {@link #toChars()}. The
- * most effective techniques regarding Region involve multiple methods, like getting a few random points from an
- * existing Region representing floor tiles in a dungeon with {@link #randomPortion(RNG, int)}, then inserting
- * those into a new Region with {@link #insertSeveral(GridPoint2...)}, and then finding a random expansion of those
- * initial points with {@link #spill(Region, int, RNG)}, giving the original Region of floor tiles as the
- * first argument. This could be used to position puddles of water or patches of mold in a dungeon level, while still
- * keeping the starting points and finished points within the boundaries of valid (floor) cells.
+ * Typical usage involves constructing a Region from some input data, like a char[][] or int[][] for a map, and
+ * modifying it spatially with expand(), retract(), flood(), etc. It's common to mix in data from
+ * other Regions with {@link #and(Region)} (which gets the intersection of two Regions and stores it in one),
+ * {@link #or(Region)} (which is like and() but for the union), {@link #xor(Region)} (like and() but for exclusive or,
+ * finding only cells that are on in exactly one of the two Regions), and {@link #andNot(Region)} (which can be
+ * considered the "subtract another region from me" method). There are 8-way (Chebyshev distance) variants on all of the
+ * spatial methods, and methods without "8way" in the name are either 4-way (Manhattan distance) or not affected by
+ * distance measurement.
+ * <br>
+ * Once you have a Region, you may want to get a single random point from it (use {@link #singleRandom(RNG)}), get
+ * several random points from it (use {@link #randomPortion(RNG, int)} for random sampling or
+ * {@link #quasiRandomSeparated(double)} (double, RNG)} for points that have some distance between each other), or get
+ * all points from it (use {@link #asPoints()}. You may also want to produce some 2D data from one or more Regions, such
+ * as with {@link #sum(Region...)} or {@link #toChars()}. The most effective techniques regarding Region involve
+ * multiple methods, like getting a few random points from an existing Region representing floor tiles in a facility
+ * with {@link #randomPortion(RNG, int)}, then inserting those into a new Region with
+ * {@link #insertSeveral(GridPoint2...)}, and then finding a random expansion of those initial points with
+ * {@link #spill(Region, int, RNG)}, giving the original Region of floor tiles as the first argument. This could be used
+ * to position puddles of water or patches of mold in an area like a dungeon or some ruins, while still keeping the
+ * starting points and finished points within the boundaries of valid (floor) cells.
  * <br>
  * For efficiency, you can place one Region into another (typically a temporary value that is no longer needed
  * and can be recycled) using {@link #remake(Region)}, or give the information that would normally be used to
@@ -57,7 +58,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
 
     /**
      * Constructs an empty 64x64 Region.
-     * GreasedRegions are mutable, so you can add to this with insert() or insertSeveral(), among others.
+     * Regions are mutable, so you can add to this with insert() or insertSeveral(), among others.
      */
     public Region()
     {
@@ -558,7 +559,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
 
     /**
      * Constructor for an empty Region of the given width and height.
-     * GreasedRegions are mutable, so you can add to this with insert() or insertSeveral(), among others.
+     * Regions are mutable, so you can add to this with insert() or insertSeveral(), among others.
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
      */
@@ -598,7 +599,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
     /**
      * Constructor for a Region that contains a single "on" cell, and has the given width and height.
      * Note that to avoid confusion with the constructor that takes multiple GridPoint2 values, this takes the single "on"
-     * GridPoint2 first, while the multiple-GridPoint2 constructor takes its vararg or array of Coords last.
+     * GridPoint2 first, while the multiple-GridPoint2 constructor takes its vararg or array of GridPoint2 last.
      * @param single the one (x,y) point to store as "on" in this Region
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
@@ -618,7 +619,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
     /**
      * Constructor for a Region that can have several "on" cells specified, and has the given width and height.
      * Note that to avoid confusion with the constructor that takes one GridPoint2 value, this takes the vararg or array of
-     * Coords last, while the single-GridPoint2 constructor takes its one GridPoint2 first.
+     * GridPoint2 last, while the single-GridPoint2 constructor takes its one GridPoint2 first.
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
      * @param points an array or vararg of GridPoint2 to store as "on" in this Region
@@ -644,7 +645,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
     /**
      * Constructor for a Region that can have several "on" cells specified, and has the given width and height.
      * Note that to avoid confusion with the constructor that takes one GridPoint2 value, this takes the Iterable of
-     * Coords last, while the single-GridPoint2 constructor takes its one GridPoint2 first.
+     * GridPoint2 last, while the single-GridPoint2 constructor takes its one GridPoint2 first.
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
      * @param points an array or vararg of GridPoint2 to store as "on" in this Region
@@ -731,7 +732,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
      * the number of calls this makes). As such, this sacrifices the precision of the fraction to obtain significantly
      * better speed than generating one random number per cell, although the precision is probably good enough (fraction
      * is effectively rounded down to the nearest multiple of 0.015625, and clamped between 0.0 and 1.0).
-     * @param random an RNG that should have a good approximateBits() method; the default (ThrustAltRNG internally) should be fine
+     * @param random an RNG that may be seeded
      * @param fraction between 0.0 and 1.0 (clamped), only considering a precision of 1/64.0 (0.015625) between steps
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
@@ -761,7 +762,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
      * makes). As such, this sacrifices the precision of the fraction to obtain significantly better speed than
      * generating one random number per cell, although the precision is probably good enough (fraction is effectively
      * rounded down to the nearest multiple of 0.015625, and clamped between 0.0 and 1.0).
-     * @param random an RNG that should have a good approximateBits() method; the default (ThrustAltRNG internally) should be fine
+     * @param random an RNG that may be seeded
      * @param fraction between 0.0 and 1.0 (clamped), only considering a precision of 1/64.0 (0.015625) between steps
      * @param width the maximum width for the Region
      * @param height the maximum height for the Region
@@ -944,7 +945,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
      * both equal between this and other, this does allocate a new data array, but still reassigns this Region
      * in-place and acts similarly to when width and height are both equal (it just uses some more memory).
      * <br>
-     * Using remake() or the similar refill() methods in chains of operations on multiple GreasedRegions can be key to
+     * Using remake() or the similar refill() methods in chains of operations on multiple Regions can be key to
      * maintaining good performance and memory usage. You often can recycle a no-longer-used Region by assigning
      * a Region you want to keep to it with remake(), then mutating either the remade value or the one that was
      * just filled into this but keeping one version around for later usage.
@@ -1942,7 +1943,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Union of two GreasedRegions, assigning the result into this Region. Any cell that is "on" in either
+     * Union of two Regions, assigning the result into this Region. Any cell that is "on" in either
      * Region will be made "on" in this Region.
      * @param other another Region that will not be modified
      * @return this, after modification, for chaining
@@ -1965,8 +1966,8 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Intersection of two GreasedRegions, assigning the result into this Region. Any cell that is "on" in both
-     * GreasedRegions will be kept "on" in this Region, but all other cells will be made "off."
+     * Intersection of two Regions, assigning the result into this Region. Any cell that is "on" in both
+     * Regions will be kept "on" in this Region, but all other cells will be made "off."
      * @param other another Region that will not be modified
      * @return this, after modification, for chaining
      */
@@ -1980,7 +1981,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
         return this;
     }
     /**
-     * Difference of two GreasedRegions, assigning the result into this Region. Any cell that is "on" in this
+     * Difference of two Regions, assigning the result into this Region. Any cell that is "on" in this
      * Region and "off" in other will be kept "on" in this Region, but all other cells will be made "off."
      * @param other another Region that will not be modified
      * @return this, after modification, for chaining
@@ -2014,10 +2015,10 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Symmetric difference (more commonly known as exclusive or, hence the name) of two GreasedRegions, assigning the
+     * Symmetric difference (more commonly known as exclusive or, hence the name) of two Regions, assigning the
      * result into this Region. Any cell that is "on" in this and "off" in other, or "off" in this and "on" in
      * other, will be made "on" in this; all other cells will be made "off." Useful to find cells that are "on" in
-     * exactly one of two GreasedRegions (not "on" in both, or "off" in both).
+     * exactly one of two Regions (not "on" in both, or "off" in both).
      * @param other another Region that will not be modified
      * @return this, after modification, for chaining
      */
@@ -2729,15 +2730,15 @@ public class Region implements Collection<GridPoint2>, Serializable {
         return this;
     }
     /**
-     * Takes the "on" cells in this Region and produces amount GreasedRegions, each one expanded by 1 cell in
+     * Takes the "on" cells in this Region and produces amount Regions, each one expanded by 1 cell in
      * the 4 orthogonal directions relative to the previous Region, making each "on" cell take up a plus-shaped
      * area that may overlap with other "on" cells (which is just a normal "on" cell then). This returns an array of
-     * GreasedRegions with progressively greater expansions, and does not modify this Region.
+     * Regions with progressively greater expansions, and does not modify this Region.
      * <br>
      * This method is very efficient due to how the class is implemented, and the various spatial increase/decrease
      * methods (including {@link #expand()}, {@link #retract()}, {@link #fringe()}, and {@link #surface()}) all perform
      * very well by operating in bulk on up to 64 cells at a time.
-     * @return an array of new GreasedRegions, length == amount, where each one is expanded by 1 relative to the last
+     * @return an array of new Regions, length == amount, where each one is expanded by 1 relative to the last
      */
     public Region[] expandSeries(int amount)
     {
@@ -2799,17 +2800,17 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Takes the "on" cells in this Region and produces amount GreasedRegions, each one expanded by 1 cell in
+     * Takes the "on" cells in this Region and produces amount Regions, each one expanded by 1 cell in
      * the 4 orthogonal directions relative to the previous Region, making each "on" cell take up a diamond-
      * shaped area. After producing the expansions, this removes the previous Region from the next Region
      * in the array, making each "fringe" in the series have 1 "thickness," which can be useful for finding which layer
-     * of expansion a cell lies in. This returns an array of GreasedRegions with progressively greater expansions
+     * of expansion a cell lies in. This returns an array of Regions with progressively greater expansions
      * without the cells of this Region, and does not modify this Region.
      * <br>
      * This method is very efficient due to how the class is implemented, and the various spatial increase/decrease
      * methods (including {@link #expand()}, {@link #retract()}, {@link #fringe()}, and {@link #surface()}) all perform
      * very well by operating in bulk on up to 64 cells at a time.
-     * @return an array of new GreasedRegions, length == amount, where each one is a 1-depth fringe pushed further out from this
+     * @return an array of new Regions, length == amount, where each one is a 1-depth fringe pushed further out from this
      */
     public Region[] fringeSeries(int amount)
     {
@@ -4501,12 +4502,12 @@ public class Region implements Collection<GridPoint2>, Serializable {
         return (Integer.reverse(idx) >>> leading) / (1.0 * (1 << (32 - leading)));
     }
     */
-    public GridPoint2[] asCoords()
+    public GridPoint2[] asPoints()
     {
-        return asCoords(new GridPoint2[size()]);
+        return asPoints(new GridPoint2[size()]);
 
     }
-    public GridPoint2[] asCoords(GridPoint2[] points)
+    public GridPoint2[] asPoints(GridPoint2[] points)
     {
         if(points == null)
             points = new GridPoint2[size()];
@@ -4810,7 +4811,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
         if(ct <= 0 || size <= 0)
             return new GridPoint2[0];
         if(ct <= size)
-            return asCoords();
+            return asPoints();
         GridPoint2[] points = new GridPoint2[size];
         int[] order = rng.randomOrdering(ct);
         Arrays.sort(order, 0, size);
@@ -4890,12 +4891,12 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D int array from an array or vararg of GreasedRegions, starting at all 0 and adding 1 to the int at
-     * a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Generates a 2D int array from an array or vararg of Regions, starting at all 0 and adding 1 to the int at
+     * a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * produce any number between 0 and 16 in a cell.
-     * @param regions an array or vararg of GreasedRegions; must all have the same width and height
-     * @return a 2D int array with the same width and height as the regions, where an int cell equals the number of given GreasedRegions that had an "on" cell at that position
+     * @param regions an array or vararg of Regions; must all have the same width and height
+     * @return a 2D int array with the same width and height as the regions, where an int cell equals the number of given Regions that had an "on" cell at that position
      */
     public static int[][] sum(Region... regions)
     {
@@ -4914,12 +4915,12 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D int array from a List of GreasedRegions, starting at all 0 and adding 1 to the int at
-     * a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Generates a 2D int array from a List of Regions, starting at all 0 and adding 1 to the int at
+     * a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * produce any number between 0 and 16 in a cell.
-     * @param regions a List of GreasedRegions; must all have the same width and height
-     * @return a 2D int array with the same width and height as the regions, where an int cell equals the number of given GreasedRegions that had an "on" cell at that position
+     * @param regions a List of Regions; must all have the same width and height
+     * @return a 2D int array with the same width and height as the regions, where an int cell equals the number of given Regions that had an "on" cell at that position
      */
     public static int[][] sum(List<Region> regions)
     {
@@ -4939,12 +4940,12 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D double array from an array or vararg of GreasedRegions, starting at all 0 and adding 1 to the double at
-     * a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Generates a 2D double array from an array or vararg of Regions, starting at all 0 and adding 1 to the double at
+     * a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * produce any number between 0 and 16 in a cell.
-     * @param regions an array or vararg of GreasedRegions; must all have the same width and height
-     * @return a 2D double array with the same width and height as the regions, where an double cell equals the number of given GreasedRegions that had an "on" cell at that position
+     * @param regions an array or vararg of Regions; must all have the same width and height
+     * @return a 2D double array with the same width and height as the regions, where an double cell equals the number of given Regions that had an "on" cell at that position
      */
     public static double[][] sumDouble(Region... regions)
     {
@@ -4963,12 +4964,12 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D double array from a List of GreasedRegions, starting at all 0 and adding 1 to the double at
-     * a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Generates a 2D double array from a List of Regions, starting at all 0 and adding 1 to the double at
+     * a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can produce any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * produce any number between 0 and 16 in a cell.
-     * @param regions a List of GreasedRegions; must all have the same width and height
-     * @return a 2D double array with the same width and height as the regions, where an double cell equals the number of given GreasedRegions that had an "on" cell at that position
+     * @param regions a List of Regions; must all have the same width and height
+     * @return a 2D double array with the same width and height as the regions, where an double cell equals the number of given Regions that had an "on" cell at that position
      */
     public static double[][] sumDouble(List<Region> regions)
     {
@@ -4988,16 +4989,16 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D int array from an array of GreasedRegions and an array of weights, starting the 2D result at all 0
+     * Generates a 2D int array from an array of Regions and an array of weights, starting the 2D result at all 0
      * and, for every Region that has that cell as "on," adding the int in the corresponding weights array at
-     * the position of that cell. This means if you give an array of 4 GreasedRegions to this method along with the
+     * the position of that cell. This means if you give an array of 4 Regions to this method along with the
      * weights {@code 1, 2, 3, 4}, it can produce a number between 0 and 10 in a cell (where 10 is used when all 4
-     * GreasedRegions have a cell "on," since {@code 1 + 2 + 3 + 4 == 10}); if the weights are instead
-     * {@code 1, 10, 100, 1000}, then the results can vary between 0 and 1111, where 1111 is only if all GreasedRegions
+     * Regions have a cell "on," since {@code 1 + 2 + 3 + 4 == 10}); if the weights are instead
+     * {@code 1, 10, 100, 1000}, then the results can vary between 0 and 1111, where 1111 is only if all Regions
      * have a cell as "on." The weights array must have a length at least equal to the length of the regions array.
-     * @param regions an array of GreasedRegions; must all have the same width and height
+     * @param regions an array of Regions; must all have the same width and height
      * @param weights an array of ints; must have length at least equal to regions' length
-     * @return a 2D int array with the same width and height as the regions, where an int cell equals the sum of the weights corresponding to GreasedRegions that had an "on" cell at that position
+     * @return a 2D int array with the same width and height as the regions, where an int cell equals the sum of the weights corresponding to Regions that had an "on" cell at that position
      */
     public static int[][] sumWeighted(Region[] regions, int[] weights)
     {
@@ -5016,16 +5017,16 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Generates a 2D double array from an array of GreasedRegions and an array of weights, starting the 2D result at
+     * Generates a 2D double array from an array of Regions and an array of weights, starting the 2D result at
      * all 0 and, for every Region that has that cell as "on," adding the double in the corresponding weights
-     * array at the position of that cell. This means if you give an array of 4 GreasedRegions to this method along with
+     * array at the position of that cell. This means if you give an array of 4 Regions to this method along with
      * the weights {@code 1, 2, 3, 4}, it can produce a number between 0 and 10 in a cell (where 10 is used when all 4
-     * GreasedRegions have a cell "on," since {@code 1 + 2 + 3 + 4 == 10}); if the weights are instead
-     * {@code 1, 10, 100, 1000}, then the results can vary between 0 and 1111, where 1111 is only if all GreasedRegions
+     * Regions have a cell "on," since {@code 1 + 2 + 3 + 4 == 10}); if the weights are instead
+     * {@code 1, 10, 100, 1000}, then the results can vary between 0 and 1111, where 1111 is only if all Regions
      * have a cell as "on." The weights array must have a length at least equal to the length of the regions array.
-     * @param regions an array of GreasedRegions; must all have the same width and height
+     * @param regions an array of Regions; must all have the same width and height
      * @param weights an array of doubles; must have length at least equal to regions' length
-     * @return a 2D double array with the same width and height as the regions, where an double cell equals the sum of the weights corresponding to GreasedRegions that had an "on" cell at that position
+     * @return a 2D double array with the same width and height as the regions, where an double cell equals the sum of the weights corresponding to Regions that had an "on" cell at that position
      */
     public static double[][] sumWeightedDouble(Region[] regions, double[] weights)
     {
@@ -5044,13 +5045,13 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
 
     /**
-     * Adds to an existing 2D int array with an array or vararg of GreasedRegions, adding 1 to the int in existing at
-     * a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can increment by any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Adds to an existing 2D int array with an array or vararg of Regions, adding 1 to the int in existing at
+     * a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can increment by any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * increase the value in existing by any number between 0 and 16 in a cell.
-     * @param existing a non-null 2D int array that will have each cell incremented by the sum of the GreasedRegions
-     * @param regions an array or vararg of GreasedRegions; must all have the same width and height
-     * @return existing, after modification, where an int cell will be changed by the number of given GreasedRegions that had an "on" cell at that position
+     * @param existing a non-null 2D int array that will have each cell incremented by the sum of the Regions
+     * @param regions an array or vararg of Regions; must all have the same width and height
+     * @return existing, after modification, where an int cell will be changed by the number of given Regions that had an "on" cell at that position
      */
     public static int[][] sumInto(int[][] existing, Region... regions)
     {
@@ -5071,13 +5072,13 @@ public class Region implements Collection<GridPoint2>, Serializable {
 
 
     /**
-     * Adds to an existing 2D double array with an array or vararg of GreasedRegions, adding 1 to the double in existing
-     * at a position once for every Region that has that cell as "on." This means if you give 8 GreasedRegions to
-     * this method, it can increment by any number between 0 and 8 in a cell; if you give 16 GreasedRegions, then it can
+     * Adds to an existing 2D double array with an array or vararg of Regions, adding 1 to the double in existing
+     * at a position once for every Region that has that cell as "on." This means if you give 8 Regions to
+     * this method, it can increment by any number between 0 and 8 in a cell; if you give 16 Regions, then it can
      * increase the value in existing by any number between 0 and 16 in a cell.
-     * @param existing a non-null 2D double array that will have each cell incremented by the sum of the GreasedRegions
-     * @param regions an array or vararg of GreasedRegions; must all have the same width and height
-     * @return existing, after modification, where a double cell will be changed by the number of given GreasedRegions that had an "on" cell at that position
+     * @param existing a non-null 2D double array that will have each cell incremented by the sum of the Regions
+     * @param regions an array or vararg of Regions; must all have the same width and height
+     * @return existing, after modification, where a double cell will be changed by the number of given Regions that had an "on" cell at that position
      */
     public static double[][] sumIntoDouble(double[][] existing, Region... regions)
     {
@@ -5095,11 +5096,11 @@ public class Region implements Collection<GridPoint2>, Serializable {
     }
     
     /**
-     * Generates a 2D int array from an array or vararg of GreasedRegions, treating each cell in the nth region as the
-     * nth bit of the int at the corresponding x,y cell in the int array. This means if you give 8 GreasedRegions to
-     * this method, it can produce any 8-bit number in a cell (0-255); if you give 16 GreasedRegions, then it can
+     * Generates a 2D int array from an array or vararg of Regions, treating each cell in the nth region as the
+     * nth bit of the int at the corresponding x,y cell in the int array. This means if you give 8 Regions to
+     * this method, it can produce any 8-bit number in a cell (0-255); if you give 16 Regions, then it can
      * produce any 16-bit number (0-65535).
-     * @param regions an array or vararg of GreasedRegions; must all have the same width and height
+     * @param regions an array or vararg of Regions; must all have the same width and height
      * @return a 2D int array with the same width and height as the regions, with bits per int taken from the regions
      */
     public static int[][] bitSum(Region... regions)
@@ -5253,22 +5254,22 @@ public class Region implements Collection<GridPoint2>, Serializable {
 
     @Override
     public Object[] toArray() {
-        return asCoords();
+        return asPoints();
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T> T[] toArray(T[] a) {
         if(a instanceof GridPoint2[])
-            return (T[])asCoords((GridPoint2[])a);
+            return (T[]) asPoints((GridPoint2[])a);
         return a;
     }
 
     @Override
-    public boolean add(GridPoint2 coord) {
-        if(contains(coord))
+    public boolean add(GridPoint2 point) {
+        if(contains(point))
             return false;
-        insert(coord);
+        insert(point);
         return true;
     }
     @Override
@@ -5397,7 +5398,7 @@ public class Region implements Collection<GridPoint2>, Serializable {
     /**
      * Returns a new Region that has been mirrored along the rightmost edge, parallel to the y-axis. The new
      * Region will have exactly twice the width, the additional width will have the contents of the original
-     * GreasesRegion in reversed order. The positions shared by both GreasedRegions will be the same, that is, any area
+     * GreasesRegion in reversed order. The positions shared by both Regions will be the same, that is, any area
      * not added to the original will be equal to the original.
      * @return a new Region with twice the width of {@code this}, that is mirrored along the rightmost edge
      */

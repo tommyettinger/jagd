@@ -589,17 +589,6 @@ public class RNG extends Random implements Serializable {
      */
     public double nextDouble() {
         return (nextLong() & 0x1fffffffffffffL) * 0x1p-53;
-        //this is here for a record of another possibility; it can't generate quite a lot of possible values though
-        //return Double.longBitsToDouble(0x3FF0000000000000L | random.nextLong() >>> 12) - 1.0;
-    }
-    /**
-     * Gets a random double between 0.0 inclusive and 1.0 inclusive.
-     *
-     * @return a double between 0.0 (inclusive) and 1.0 (inclusive)
-     */
-    public double nextDoubleInclusive()
-    {
-        return (nextLong() & 0x1fffffffffffffL) * 0x1.0000000000001p-53;
     }
 
     /**
@@ -612,6 +601,38 @@ public class RNG extends Random implements Serializable {
      */
     public double nextDouble(final double outer) {
         return (nextLong() & 0x1fffffffffffffL) * 0x1p-53 * outer;
+    }
+    
+    /**
+     * Gets a random float between 0.0f inclusive and 1.0f exclusive.
+     * This returns a maximum of 0.99999994 because that is the largest float value that is less than 1.0f .
+     *
+     * @return a float between 0f (inclusive) and 0.99999994f (inclusive)
+     */
+    public float nextFloat() {
+        return (nextLong() & 0xFFFFFF) * 0x1p-24f; 
+    }
+
+    /**
+     * This returns a random float between 0.0f (inclusive) and outer (exclusive). The value for outer can be positive
+     * or negative. Because of how math on floats works, there are at most 2 to the 24 values this can return for any
+     * given outer bound, and very large values for outer will not necessarily produce all numbers you might expect.
+     *
+     * @param outer the outer exclusive bound as a float; can be negative or positive
+     * @return a float between 0f (inclusive) and outer (exclusive)
+     */
+    public float nextFloat(final float outer) {
+        return (nextLong() & 0xFFFFFF) * 0x1p-24f * outer;
+    }
+
+    /**
+     * Gets a random double between 0.0 inclusive and 1.0 inclusive.
+     *
+     * @return a double between 0.0 (inclusive) and 1.0 (inclusive)
+     */
+    public double nextDoubleInclusive()
+    {
+        return (nextLong() & 0x1fffffffffffffL) * 0x1.0000000000001p-53;
     }
 
     /**
@@ -627,16 +648,6 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
-     * Gets a random float between 0.0f inclusive and 1.0f exclusive.
-     * This returns a maximum of 0.99999994 because that is the largest float value that is less than 1.0f .
-     *
-     * @return a float between 0f (inclusive) and 0.99999994f (inclusive)
-     */
-    public float nextFloat() {
-        return (nextLong() & 0xFFFFFF) * 0x1p-24f;
-    }
-
-    /**
      * Gets a random float between 0.0f inclusive and 1.0f inclusive.
      *
      * @return a float between 0f (inclusive) and 1f (inclusive)
@@ -644,17 +655,7 @@ public class RNG extends Random implements Serializable {
     public float nextFloatInclusive() {
         return (nextLong() & 0xFFFFFF) * 0x1.000002p-24f;
     }
-    /**
-     * This returns a random float between 0.0f (inclusive) and outer (exclusive). The value for outer can be positive
-     * or negative. Because of how math on floats works, there are at most 2 to the 24 values this can return for any
-     * given outer bound, and very large values for outer will not necessarily produce all numbers you might expect.
-     *
-     * @param outer the outer exclusive bound as a float; can be negative or positive
-     * @return a float between 0f (inclusive) and outer (exclusive)
-     */
-    public float nextFloat(final float outer) {
-        return (nextLong() & 0xFFFFFF) * 0x1p-24f * outer;
-    }
+
     /**
      * This returns a random float between 0.0f (inclusive) and outer (inclusive). The value for outer can be positive
      * or negative. Because of how math on floats works, there are at most 2 to the 24 values this can return for any
@@ -682,11 +683,45 @@ public class RNG extends Random implements Serializable {
      * @return a 64-bit random long.
      */
     public long nextLong() {
-        final long s = (state += 0x6C8E9CF570932BD5L);
-        final long z = (s ^ (s >>> 25)) * (s | 0xA529L);
-        return z ^ (z >>> 22);
+        long z = state += 0x9E3779B97F4A7C15L;
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
     }
 
+    /**
+     * Given the output of a call to {@link #nextLong()} as {@code out}, this finds the state of the RNG that produced
+     * that output. If you set the state of an RNG with {@link #setSeed(long)} to the result of this method and then
+     * call {@link #nextLong()} on it, you should get back {@code out}.
+     * @param out a long as produced by {@link #nextLong()}, without changes
+     * @return the state of the RNG that will produce the given long
+     */
+    public static long inverseNextLong(long out)
+    {
+        out ^= out >>> 31;
+        out ^= out >>> 62;
+        out *= 0x319642B2D24D8EC3L;
+        out ^= out >>> 27;
+        out ^= out >>> 54;
+        out *= 0x96DE1B173F119089L;
+        out ^= out >>> 30;
+        return (out ^ out >>> 60) - 0x9E3779B97F4A7C15L;
+        //0x96DE1B173F119089L 0x319642B2D24D8EC3L 0xF1DE83E19937733DL
+    }
+
+    /**
+     * Returns the number of steps (where a step is equal to one call to most random number methods in this class)
+     * needed to go from receiving out1 from an RNG's {@link #nextLong()} method to receiving out2 from another call.
+     * This number can be used with {@link #skip(long)} to move an RNG forward or backward by the desired distance.
+     * @param out1 a long as produced by {@link #nextLong()}, without changes
+     * @param out2 a long as produced by {@link #nextLong()}, without changes
+     * @return the number of calls to {@link #nextLong()} that would be required to go from producing out1 to producing out2; can be positive or negative
+     */
+    public static long distance(long out1, long out2)
+    {
+        return inverseNextLong(out2) * 0xF1DE83E19937733DL - inverseNextLong(out1) * 0xF1DE83E19937733DL;
+    }
+    
     /**
      * Returns a random long below the given bound, or 0 if the bound is 0 or
      * negative.
@@ -726,17 +761,18 @@ public class RNG extends Random implements Serializable {
      * Advances or rolls back the RNG's state without actually generating each number. Skips forward
      * or backward a number of steps specified by advance, where a step is equal to one call to {@link #nextLong()} (or
      * {@link #nextInt()} or {@link #nextInt(int)}, but not not {@link #nextLong(long)}) and returns the random number
-     * produced at that step (you can get the state with {@link #getState()}).
+     * produced at that step (you can get the state with {@link #getSeed()}).
      *
      * @param advance Number of future generations to skip over; can be negative to backtrack, 0 gets the most-recently-generated number
      * @return the random long generated after skipping forward or backwards by {@code advance} numbers
      */
-    public final long skip(long advance) {
-        final long s = (state += 0x6C8E9CF570932BD5L * advance);
-        final long z = (s ^ (s >>> 25)) * (s | 0xA529L);
-        return z ^ (z >>> 22);
+    public long skip(long advance) {
+        long z = (state += 0x9E3779B97F4A7C15L * advance);
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
     }
-
+    
     /**
      * Generates random bytes and places them into the given byte array, modifying it in-place.
      * The number of random bytes produced is equal to the length of the byte array. Unlike the
@@ -770,19 +806,32 @@ public class RNG extends Random implements Serializable {
      * @return a random number that fits in the specified number of bits.
      */
     public int next(int bits) {
-        final long s = (state += 0x6C8E9CF570932BD5L);
-        final long z = (s ^ (s >>> 25)) * (s | 0xA529L);
-        return (int)(z ^ (z >>> 22)) >>> (32 - bits);
-
+        long z = state += 0x9E3779B97F4A7C15L;
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return (int)(z ^ (z >>> 31)) >>> (32 - bits);
     }
 
-    public long getState() {
+    /**
+     * Returns the exact current state being used by this generator; if you set this back into another RNG using
+     * {@link #setSeed(long)}, then it will return the same sequence of numbers this RNG will. 
+     * @return the state of this RNG as a long
+     */
+    public long getSeed() {
         return state;
     }
 
-    public void setState(final long state) {
+    /**
+     * Sets the current state of the generator, which will be used without changes on the next call to a pseudo-random
+     * number method such as {@link #nextLong()}. Does not do anything with the state of the {@link Random} class this
+     * extends.
+     * @param state
+     */
+    @Override
+    public void setSeed(final long state) {
         this.state = state;
     }
+    
 
     /**
      * Creates a copy of this RNG; it will generate the same random numbers, given the same calls in order, as this RNG
@@ -1049,21 +1098,36 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
-     * Gets a random Coord that has x between 0 (inclusive) and width (exclusive) and y between 0 (inclusive)
+     * Gets a random GridPoint2 that has x between 0 (inclusive) and width (exclusive) and y between 0 (inclusive)
      * and height (exclusive). This makes one call to randomLong to generate (more than) 31 random bits for
      * each axis, and should be very fast. If width and height are very large, greater than 100,000 for either,
      * this particular method may show bias toward certain positions due to the "hasty" technique used to reduce
      * the random numbers to the given size, but because most maps in tile-based games are relatively small, this
-     * technique should be fine.
+     * technique should be fine. This allows negative values for width and/or height if you want x and/or y to be
+     * negative; the coordinates will still be between 0 and width or height.
      * <br>
      * Credit goes to Daniel Lemire, http://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
      *
      * @param width  the upper bound (exclusive) for x coordinates
      * @param height the upper bound (exclusive) for y coordinates
-     * @return a random Coord between (0,0) inclusive and (width,height) exclusive
+     * @return a random GridPoint2 between (0,0) inclusive and (width,height) exclusive
      */
-    public GridPoint2 nextCoord(int width, int height) {
+    public GridPoint2 nextPoint(int width, int height) {
         final long n = nextLong();
         return new GridPoint2((int) ((width * (n >>> 33)) >> 31), (int) ((height * (n & 0x7FFFFFFFL)) >> 31));
     }
+
+//    public static void main(String[] args)
+//    {
+//        RNG rng = new RNG(10L);
+//        long out1 = rng.nextLong();
+//        long inv1 = inverseNextLong(out1);
+//        rng.nextLong();
+//        long out2 = rng.nextLong();
+//        long inv2 = inverseNextLong(out2);
+//        rng.nextLong();
+//        rng.setSeed(inv2);
+//        System.out.printf("Inverse 1: 0x%016X, Inverse 2: 0x%016X, distance: 0x%016X, equal: %b\n", inv1, inv2,distance(out1, out2), out2 == rng.nextLong());
+//    }
+
 }
