@@ -30,4 +30,24 @@ public class PoissonDiskTest {
             System.out.println(grid[y]);
         }
     }
+    @Test
+    public void stressTest() {
+        RNG rng = new RNG(7777777L); // try -411885208567508193L for a weird state
+        Vector2 center = new Vector2(1, 1);
+        long sz = 0L, state;
+        for (int i = 0; i < 1000000; i++) {
+            state = rng.state;
+            center.set(rng.nextFloat(10), rng.nextFloat(15));
+            try
+            {
+                sz += PoissonDisk.sampleCircle(center, 4f, 1.5f, 9, 20, rng).size();
+            }catch (IndexOutOfBoundsException e)
+            {
+                System.out.println("\nException on iteration " + i + " with state " + state + " :\n");
+                e.printStackTrace();
+                break;
+            }
+        }
+        System.out.println(sz);
+    }
 }

@@ -59,6 +59,26 @@ public class PoissonDisk {
         return sample(center.x -radius, center.y -radius, center.x + radius, center.y + radius,
                 radius * radius, uniformDistance, uniformDistance, pointsPerIteration, -1, rng);
     }
+
+    /**
+     * Get a set of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * The set will be limited to contain at most {@code pointLimit} items.
+     * @param center the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @param pointsPerIteration with small radii, this can be around 5; with larger ones, 30 is reasonable
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @param rng an RNG to use for all random sampling.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleCircle(Vector2 center, float radius, float uniformDistance,
+                                                   int pointsPerIteration, int pointLimit, RNG rng)
+    {
+        return sample(center.x - radius, center.y - radius, center.x + radius, center.y + radius,
+                radius * radius, uniformDistance, uniformDistance, pointsPerIteration, pointLimit, rng);
+    }
+
     /**
      * Get a IndexedSet of Vector2, each randomly positioned around the given center out to the given radius (measured with
      * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
@@ -72,7 +92,6 @@ public class PoissonDisk {
     {
         return sample(centerX - radius, centerY - radius, centerX + radius, centerY + radius,
                 radius * radius, uniformDistance, uniformDistance, defaultPointsPlaced, -1, new RNG());
-
     }
 
     /**
@@ -91,6 +110,26 @@ public class PoissonDisk {
     {
         return sample(centerX - radius, centerY - radius, centerX + radius, centerY + radius,
                 radius * radius, uniformDistance, uniformDistance, pointsPerIteration, -1, rng);
+    }
+
+    /**
+     * Get a set of Vector2, each randomly positioned around the given center out to the given radius (measured with
+     * Euclidean distance, so a true circle), but with the given minimum distance from any other Vector2 in the set.
+     * The set will be limited to contain at most {@code pointLimit} items.
+     * @param centerX the x-coordinate of the center of the circle to spray Vector2s into
+     * @param centerY the y-coordinate of the center of the circle to spray Vector2s into
+     * @param radius the radius of the circle to spray Vector2s into
+     * @param uniformDistance the minimum distance between Vector2s, in Euclidean distance as a float.
+     * @param pointsPerIteration with small radii, this can be around 5; with larger ones, 30 is reasonable
+     * @param pointLimit the hard limit for how many points can be in the returned Set; if negative then unlimited
+     * @param rng an RNG to use for all random sampling.
+     * @return an IndexedSet of Vector2 that satisfy the minimum distance; the length of the set can vary
+     */
+    public static IndexedSet<Vector2> sampleCircle(float centerX, float centerY, float radius, float uniformDistance,
+                                                   int pointsPerIteration, int pointLimit, RNG rng)
+    {
+        return sample(centerX - radius, centerY - radius, centerX + radius, centerY + radius,
+                radius * radius, uniformDistance, uniformDistance, pointsPerIteration, pointLimit, rng);
     }
 
     /**
@@ -214,8 +253,8 @@ public class PoissonDisk {
         Vector2 center = new Vector2((minX + maxX) * 0.5f, (minY + maxY) * 0.5f);
         Vector2 dimensions = new Vector2(maxX - minX, maxY - minY);
         float cellSize = Math.max(minimumDistance / rootTwo, 0.25f);
-        int gridWidth = (int)(dimensions.x / cellSize) + 1;
-        int gridHeight = (int)(dimensions.y / cellSize) + 1;
+        int gridWidth = MathUtils.roundPositive(dimensions.x / cellSize) + 1;
+        int gridHeight = MathUtils.roundPositive(dimensions.y / cellSize) + 1;
         Vector2[][] grid = new Vector2[gridWidth][gridHeight];
         ArrayList<Vector2> activePoints = new ArrayList<Vector2>(pointLimit >> 2);
 
@@ -245,7 +284,7 @@ public class PoissonDisk {
             Vector2 point = activePoints.get(listIndex);
             boolean found = false;
 
-            for (int k = 0; k < pointsPerIteration; k++)
+            for (int k = 0; k < pointsPerIteration && points.size < pointLimit; k++)
             {
                 //add next point
                 //get random point around
