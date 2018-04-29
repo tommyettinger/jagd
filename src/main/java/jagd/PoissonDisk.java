@@ -243,7 +243,7 @@ public class PoissonDisk {
         IndexedSet<Vector2> points;
         if(pointLimit < 0)
         {
-            pointLimit = Integer.MAX_VALUE; // collections can't actually hold this many; we'll never reach it
+            pointLimit = 65536; // should be more than enough for ordinary usage
             points = new IndexedSet<Vector2>(256);
         }
         else 
@@ -256,7 +256,7 @@ public class PoissonDisk {
         int gridWidth = MathUtils.roundPositive(dimensions.x / cellSize) + 1;
         int gridHeight = MathUtils.roundPositive(dimensions.y / cellSize) + 1;
         Vector2[][] grid = new Vector2[gridWidth][gridHeight];
-        ArrayList<Vector2> activePoints = new ArrayList<Vector2>(pointLimit >> 2);
+        ArrayList<Vector2> activePoints = new ArrayList<Vector2>(256);
 
         //add first point
         boolean added = false;

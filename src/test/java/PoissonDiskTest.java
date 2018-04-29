@@ -14,7 +14,7 @@ public class PoissonDiskTest {
     @Test
     public void testPoisson()
     {
-        IndexedSet<Vector2> points = PoissonDisk.sampleRectangle(0f, 0f, 63.5f, 63.5f, 3f, 25, 500, new RNG("Fish"));
+        IndexedSet<Vector2> points = PoissonDisk.sampleRectangle(0f, 0f, 63.5f, 63.5f, 3f, 25, -1, new RNG("Fish"));
         final int HEIGHT = 64, WIDTH = 64;
         char[][] grid = new char[HEIGHT][WIDTH];
         for (int y = 0; y < HEIGHT; y++) {
@@ -40,7 +40,7 @@ public class PoissonDiskTest {
             center.set(rng.nextFloat(10), rng.nextFloat(15));
             try
             {
-                sz += PoissonDisk.sampleCircle(center, 4f, 1.5f, 9, 20, rng).size();
+                sz += PoissonDisk.sampleCircle(center, 4f, 1.5f, 9, 10, rng).size();
             }catch (IndexOutOfBoundsException e)
             {
                 System.out.println("\nException on iteration " + i + " with state " + state + " :\n");
