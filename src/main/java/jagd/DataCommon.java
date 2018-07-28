@@ -172,7 +172,6 @@ public class DataCommon {
      * @param array an IntArray to reorder
      * @param ordering an array or varargs of int indices, where the nth item in ordering changes the nth item in this
      *                 IntVLA to have the value currently in this IntVLA at the index specified by the value in ordering
-     * @return this for chaining, after modifying it in-place
      */
     public static void reorder (IntArray array, int... ordering) {
         int ol;
