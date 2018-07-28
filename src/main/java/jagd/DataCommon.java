@@ -44,22 +44,16 @@ public class DataCommon {
     public static final long INV_LONG_PHI = 0xf1de83e19937733dL;
     
     /**
-     * Thoroughly mixes the bits of an integer.
-     * <br>
-     * This method mixes the bits of the argument using a multiplication by a smaller int (19 bits) followed by XOR with
-     * two different rotations of the earlier product; it should work well even on GWT, where overflow can't be relied
-     * on without bitwise operations being used. The previous mix(int) method would lose precision rather than
-     * overflowing on GWT, which could have serious effects on the performance of a hash table (where lost precision
-     * means more collisions).
+     * Thoroughly mixes the bits of an integer; GWT-compatible and will not lose precision as long as int inputs are
+     * between {@link Integer#MIN_VALUE} and {@link Integer#MAX_VALUE}, inclusive (the inverse is only possible on GWT).
      *
-     * @param x an integer.
-     * @return a hash value obtained by mixing the bits of {@code x}.
+     * @param n an integer.
+     * @return a hash value obtained by mixing the bits of {@code n}.
      */
-    static int mix(int x)
-    {
-        return (x *= 0x62BD5) ^ ((x << 17) | (x >>> 15)) ^ ((x << 9) | (x >>> 23));
+    public static int mix(final int n){
+        final int h = n * 0x9E375;
+        return h ^ (h >>> 16);
     }
-    
     /**
      * Quickly mixes the bits of a long integer.
      * <br>This method mixes the bits of the argument by multiplying by the golden ratio and
@@ -71,7 +65,7 @@ public class DataCommon {
      * @return a hash value obtained by mixing the bits of {@code x}.
      * @see #invMix(long)
      */
-    static long mix(final long x) {
+    public static long mix(final long x) {
         long h = x * LONG_PHI;
         h ^= h >>> 32;
         return h ^ (h >>> 16);
@@ -142,6 +136,25 @@ public class DataCommon {
         int value = items[index];
         System.arraycopy(items, index + 1, items, index, sz - index);
         items[sz] = value;
+    }
+
+    /**
+     * Exactly like {@link IntArray#removeValue(int)}, but returns the index that was removed or -1 if none was found.
+     * @param array an IntArray that will be modified
+     * @param value a value to search for and remove the first occurrence of
+     * @return the index of the first found/removed value, or -1 if none was found
+     */
+    public static int removeValue(final IntArray array, final int value)
+    {
+        final int[] items = array.items;
+        for (int i = 0, n = items.length; i < n; i++) {
+            if (items[i] == value) {
+                array.removeIndex(i);
+                return i;
+            }
+        }
+        return -1;
+
     }
     /**
      * Given an array or varargs of replacement indices for the values of this IntArray, reorders this so the first item

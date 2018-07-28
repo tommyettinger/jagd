@@ -105,14 +105,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
      * Whether this set contains the key zero.
      */
     protected boolean containsNullKey;
-    /**
-     * The index of the first entry in iteration order. It is valid iff {@link #size} is nonzero; otherwise, it contains -1.
-     */
-    protected int first = -1;
-    /**
-     * The index of the last entry in iteration order. It is valid iff {@link #size} is nonzero; otherwise, it contains -1.
-     */
-    protected int last = -1;
     /*
      * For each entry, the next and the previous entry in iteration order, stored as <code>((prev & 0xFFFFFFFFL) << 32) | (next & 0xFFFFFFFFL)</code>. The first entry contains predecessor -1, and the
      * last entry contains successor -1.
@@ -454,10 +446,9 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
      */
     public void putAll(Map<? extends K, ? extends V> m) {
         if (f <= .5)
-            ensureCapacity(m.size()); // The resulting map will be sized for
-            // m.size() elements
+            ensureCapacity(m.size()); // The resulting map will be sized for m.size() elements
         else
-            tryCapacity(size() + m.size()); // The resulting map will be
+            tryCapacity(size() + m.size());
         int n = m.size();
         final Iterator<? extends Entry<? extends K, ? extends V>> i = m
                 .entrySet().iterator();
@@ -496,11 +487,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         }
         key[pos] = k;
         value[pos] = v;
-        if (size == 0) {
-            first = last = pos;
-        } else {
-            last = pos;
-        }
         order.add(pos);
         if (size++ >= maxFill)
             rehash(arraySize(size + 1, f));
@@ -539,9 +525,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         }
         key[pos] = k;
         value[pos] = v;
-        if (size == 0) {
-            first = last = pos;
-        }
         order.insert(idx, pos);
         if (size++ >= maxFill)
             rehash(arraySize(size + 1, f));
@@ -556,11 +539,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         return oldValue;
     }
     public V putAt(final K k, final V v, final int idx) {
-        if(idx <= 0)
-            return putAndMoveToFirst(k, v);
-        else if(idx >= size)
-            return putAndMoveToLast(k, v);
-
         final int pos = insertAt(k, v, idx);
         if (pos < 0)
             return defRetValue;
@@ -638,12 +616,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     public V removeFirst() {
         if (size == 0)
             throw new NoSuchElementException();
-        final int pos = first;
-        order.removeIndex(0);
-        if(order.size > 0)
-            first = order.get(0);
-        else
-            first = -1;
+        final int pos = order.removeIndex(0);
 
         size--;
         final V v = value[pos];
@@ -668,12 +641,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     public V removeLast() {
         if (size == 0)
             throw new NoSuchElementException();
-        final int pos = last;
-        order.pop();
-        if(order.size > 0)
-            last = order.get(order.size - 1);
-        else
-            last = -1;
+        final int pos = order.pop();
         size--;
         final V v = value[pos];
         if (pos == n) {
@@ -686,47 +654,16 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
             rehash(n / 2);
         return v;
     }
+
     private void moveIndexToFirst(final int i) {
-        if(size <= 1 || first == i)
+        if(size <= 1 || order.items[0] == i)
             return;
         DataCommon.moveToFirst(order, i);
-        if (last == i) {
-            last = order.peek();
-            //last = (int) (link[i] >>> 32);
-            // Special case of SET_NEXT( link[ last ], -1 );
-            //link[last] |= -1 & 0xFFFFFFFFL;
-        }/* else {
-            final long linki = link[i];
-            final int prev = (int) (linki >>> 32);
-            final int next = (int) linki;
-            link[prev] ^= ((link[prev] ^ (linki & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            link[next] ^= ((link[next] ^ (linki & 0xFFFFFFFF00000000L)) & 0xFFFFFFFF00000000L);
-        }
-        link[first] ^= ((link[first] ^ ((i & 0xFFFFFFFFL) << 32)) & 0xFFFFFFFF00000000L);
-        link[i] = ((-1 & 0xFFFFFFFFL) << 32) | (first & 0xFFFFFFFFL);
-        */
-        first = i;
     }
     private void moveIndexToLast(final int i) {
-        if(size <= 1 || last == i)
+        if(size <= 1 || order.items[order.size-1] == i)
             return;
         DataCommon.moveToLast(order, i);
-        if (first == i) {
-            first = order.get(0);
-            //first = (int) link[i];
-            // Special case of SET_PREV( link[ first ], -1 );
-            //link[first] |= (-1 & 0xFFFFFFFFL) << 32;
-        } /*else {
-            final long linki = link[i];
-            final int prev = (int) (linki >>> 32);
-            final int next = (int) linki;
-            link[prev] ^= ((link[prev] ^ (linki & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            link[next] ^= ((link[next] ^ (linki & 0xFFFFFFFF00000000L)) & 0xFFFFFFFF00000000L);
-        }
-        link[last] ^= ((link[last] ^ (i & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-        link[i] = ((last & 0xFFFFFFFFL) << 32) | (-1 & 0xFFFFFFFFL);
-        */
-        last = i;
     }
     /**
      * Returns the value to which the given key is mapped; if the key is
@@ -841,15 +778,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         }
         key[pos] = k;
         value[pos] = v;
-        if (size == 0) {
-            first = last = pos;
-            // Special case of SET_UPPER_LOWER( link[ pos ], -1, -1 );
-            //link[pos] = -1L;
-        } else {
-            //link[first] ^= ((link[first] ^ ((pos & 0xFFFFFFFFL) << 32)) & 0xFFFFFFFF00000000L);
-            //link[pos] = ((-1 & 0xFFFFFFFFL) << 32) | (first & 0xFFFFFFFFL);
-            first = pos;
-        }
         order.insert(0, pos);
         if (size++ >= maxFill)
             rehash(arraySize(size, f));
@@ -893,15 +821,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         }
         key[pos] = k;
         value[pos] = v;
-        if (size == 0) {
-            first = last = pos;
-            // Special case of SET_UPPER_LOWER( link[ pos ], -1, -1 );
-            //link[pos] = -1L;
-        } else {
-            //link[last] ^= ((link[last] ^ (pos & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            //link[pos] = ((last & 0xFFFFFFFFL) << 32) | (-1 & 0xFFFFFFFFL);
-            last = pos;
-        }
         if(order.peek() != pos)
             order.add(pos);
         if (size++ >= maxFill)
@@ -989,7 +908,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     /**
      * Swaps the positions in the ordering for the given items, if they are both present. Returns true if the ordering
      * changed as a result of this call, or false if it stayed the same (which can be because left or right was not
-     * present, or because left and right are the same reference (so swapping would do nothing)).
+     * present, or because left and right are the same reference (so swapping liwould do nothing)).
      * @param left an item that should be present in this IndexedMap
      * @param right an item that should be present in this IndexedMap
      * @return true if this IndexedMap changed in ordering as a result of this call, or false otherwise
@@ -1064,7 +983,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         containsNullKey = false;
         Arrays.fill(key, null);
         Arrays.fill(value, null);
-        first = last = -1;
         order.clear();
     }
 
@@ -1124,8 +1042,9 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         }
     }
 
+
     /**
-     * Modifies the ordering so that the given entry is removed. This method will complete in logarithmic time.
+     * Modifies the ordering so that the given entry is removed. This method will complete in linear time.
      *
      * @param i the index of an entry.
      * @return the iteration-order index of the removed entry
@@ -1133,39 +1052,26 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     protected int fixOrder(final int i) {
         if (size == 0) {
             order.clear();
-            first = last = -1;
-            return 0;
+            return -1;
         }
-        int idx = order.indexOf(i);
-        order.removeIndex(idx);
-        if (first == i) {
-            first = order.get(0);
-        }
-        if (last == i) {
-            last = order.peek();
-        }
-        return idx;
+        return DataCommon.removeValue(order, i);
     }
 
     /**
      * Modifies the ordering for a shift from s to d.
      * <br>
-     * This method will complete in logarithmic time or better.
+     * This method will complete in linear time unless the source position is first or last.
      *
      * @param s the source position.
      * @param d the destination position.
      */
     protected void fixOrder(int s, int d) {
-        if (size == 1) {
-            first = last = d;
+        if(size == 0)
+            return;
+        if (size == 1 || order.items[0] == s) {
             order.set(0, d);
         }
-        else if (first == s) {
-            first = d;
-            order.set(0, d);
-        }
-        else if (last == s) {
-            last = d;
+        else if (order.items[order.size-1] == s) {
             order.set(order.size - 1, d);
         }
         else
@@ -1182,7 +1088,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     public K firstKey() {
         if (size == 0)
             throw new NoSuchElementException();
-        return key[first];
+        return key[order.items[0]];
     }
     /**
      * Returns the last key of this map in iteration order.
@@ -1192,7 +1098,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     public K lastKey() {
         if (size == 0)
             throw new NoSuchElementException();
-        return key[last];
+        return key[order.items[order.size-1]];
     }
     public Comparator<? super K> comparator() {
         return null;
@@ -1225,7 +1131,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
          * {@link ListIterator#next()} (or <code>null</code> if no
          * next entry exists).
          */
-        int next = -1;
+        int next;
         /**
          * The last entry that was returned (or -1 if we did not iterate or used
          * {@link Iterator#remove()}).
@@ -1236,43 +1142,11 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
          * Note that this value is not meaningful when this iterator has been
          * created using the nonempty constructor.
          */
-        int index = 0;
+        int index;
         private MapIterator() {
-            next = first;
+            next = size == 0 ? -1 : order.items[0];
             index = 0;
         }
-        /*
-        private MapIterator(final K from) {
-            if (((from) == null)) {
-                if (containsNullKey) {
-                    next = (int) link[n];
-                    prev = n;
-                    return;
-                } else
-                    throw new NoSuchElementException("The key null"
-                            + " does not belong to this map.");
-            }
-            if (((key[last]) != null && (key[last]).equals(from))) {
-                prev = last;
-                index = size;
-                return;
-            }
-            // The starting point.
-            int pos = (((from).hashCode()))
-                    & mask;
-            // There's always an unused entry.
-            while (!((key[pos]) == null)) {
-                if (((key[pos]).equals(from))) {
-                    // Note: no valid index known.
-                    next = (int) link[pos];
-                    prev = pos;
-                    return;
-                }
-                pos = (pos + 1) & mask;
-            }
-            throw new NoSuchElementException("The key " + from
-                    + " does not belong to this map.");
-        }*/
         public boolean hasNext() {
             return next != -1;
         }
@@ -1291,10 +1165,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
                 return;
             }
             index = 0;
-            /*while (pos != prev) {
-                pos = (int) link[pos];
-                index++;
-            }*/
         }
         public int nextIndex() {
             ensureIndexKnown();
@@ -1347,15 +1217,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
                 else
                     next = -1;
             }
-            /*
-			 * Now we manually fix the pointers. Because of our knowledge of
-			 * next and prev, this is going to be faster than calling
-			 * fixOrder().
-			 */
-            if (prev == -1)
-                first = next;
-            if (next == -1)
-                last = prev;
             order.removeIndex(index);
             size--;
             int last, slot, pos = curr;
@@ -1481,12 +1342,12 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         public Entry<K, V> first() {
             if (size == 0)
                 throw new NoSuchElementException();
-            return new MapEntry(IndexedMap.this.first);
+            return new MapEntry(IndexedMap.this.order.items[0]);
         }
         public Entry<K, V> last() {
             if (size == 0)
                 throw new NoSuchElementException();
-            return new MapEntry(IndexedMap.this.last);
+            return new MapEntry(IndexedMap.this.order.items[size - 1]);
         }
         @SuppressWarnings("unchecked")
         public boolean contains(final Object o) {
@@ -1750,12 +1611,12 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
 
         public K first() {
             if (size == 0) throw new NoSuchElementException();
-            return key[first];
+            return key[order.items[0]];
         }
 
         public K last() {
             if (size == 0) throw new NoSuchElementException();
-            return key[last];
+            return key[order.items[size-1]];
         }
 
         public Comparator<K> comparator() {
@@ -2069,7 +1930,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     protected void rehash(final int newN) {
         final K key[] = this.key;
         final V value[] = this.value;
-        final int mask = newN - 1; // Note that this is used by the hashing macro
+        final int mask = newN - 1;
         final K newKey[] = (K[]) new Object[newN + 1];
         final V newValue[] = (V[]) new Object[newN + 1];
         final int sz = order.size;
@@ -2088,10 +1949,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
             newKey[pos] = k;
             newValue[pos] = value[i];
             oi[q] = pos;
-        }
-        if(sz > 0) {
-            first = oi[0];
-            last = oi[sz - 1];
         }
         n = newN;
         this.mask = mask;
@@ -2354,8 +2211,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         final K key[] = this.key = (K[]) new Object[n + 1];
         final V value[] = this.value = (V[]) new Object[n + 1];
         final IntArray order = this.order = new IntArray(n + 1);
-        int prev = -1;
-        first = last = -1;
         K k;
         V v;
         for (int i = size, pos; i-- != 0;) {
@@ -2373,14 +2228,8 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
 
             key[pos] = k;
             value[pos] = v;
-            if (first != -1) {
-                prev = pos;
-            } else {
-                prev = first = pos;
-            }
             order.add(pos);
         }
-        last = prev;
     }
 
     /**
@@ -2479,8 +2328,6 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         if(size < 2)
             return this;
         rng.shuffleInPlace(order);
-        first = order.get(0);
-        last = order.peek();
         return this;
     }
 
@@ -2503,96 +2350,8 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
     public IndexedMap<K, V> reorder(int... ordering)
     {
         DataCommon.reorder(order, ordering);
-        first = order.get(0);
-        last = order.peek();
         return this;
     }
-    private V alterEntry(final int pos, final K replacement) {
-        shiftKeys(pos);
-        final V[] value = this.value;
-        V v = value[pos];
-        value[pos] = null;
-
-        int rep;
-        if (replacement == null) {
-            if (containsNullKey)
-                return v;
-            rep = n;
-            containsNullKey = true;
-        } else {
-            K curr;
-            final K[] key = this.key;
-
-            // The starting point.
-            if (!((curr = key[rep = (hasher.hash(replacement)) & mask]) == null)) {
-                if (hasher.areEqual(curr, replacement))
-                    return v;
-                while (!((curr = key[rep = (rep + 1) & mask]) == null))
-                    if (hasher.areEqual(curr, replacement))
-                        return v;
-            }
-            key[rep] = replacement;
-            value[rep] = v;
-        }
-        fixOrder(pos, rep);
-        return v;
-    }
-    private V alterNullEntry(final K replacement) {
-        containsNullKey = false;
-        key[n] = null;
-        final V[] value = this.value;
-        V v = value[n];
-        value[n] = null;
-
-        int rep;
-        if (replacement == null) {
-            rep = n;
-            containsNullKey = true;
-        } else {
-            K curr;
-            final K[] key = this.key;
-            // The starting point.
-            if ((curr = key[rep = (hasher.hash(replacement)) & mask]) != null) {
-                if (hasher.areEqual(curr, replacement))
-                    return v;
-                while ((curr = key[rep = (rep + 1) & mask]) != null)
-                    if (hasher.areEqual(curr, replacement))
-                        return v;
-            }
-            key[rep] = replacement;
-            value[rep] = v;
-
-        }
-        fixOrder(n, rep);
-        return v;
-    }
-/*
-    public V alter(final K original, final K replacement) {
-        if (original == null) {
-            if (containsNullKey) {
-                return alterNullEntry(replacement);
-            }
-            else
-                return put(replacement, null);
-        }
-        else if(hasher.areEqual(original, replacement))
-            return get(original);
-        K curr;
-        final K[] key = this.key;
-        int pos;
-
-        if ((curr = key[pos = (hasher.hash(original)) & mask]) == null)
-            return put(replacement, null);
-        if (hasher.areEqual(original, curr))
-            return alterEntry(pos, replacement);
-        while (true) {
-            if ((curr = key[pos = (pos + 1) & mask]) == null)
-                return put(replacement, null);
-            if (hasher.areEqual(original, curr))
-                return alterEntry(pos, replacement);
-        }
-    }
-    */
     private int alterEntry(final int pos) {
         value[pos] = null;
         size--;
@@ -2605,8 +2364,7 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
         key[n] = null;
         value[n] = null;
         size--;
-        int idx = fixOrder(n);
-        return idx;
+        return fixOrder(n);
     }
     /**
      * Swaps a key, original, for another key, replacement, while keeping replacement at the same point in the iteration
@@ -2746,11 +2504,15 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
      * @return {@code true} if the value was removed
      */
     public boolean remove(Object key, Object value) {
-        if (containsKey(key) && CrossHash.objectEquals(get(key), value)) {
-            remove(key);
-            return true;
-        } else
-            return false;
+        if (containsKey(key)) {
+            V v = get(key);
+            if (v == value || (value != null && value.equals(v))) {
+                remove(key);
+                return true;
+            }
+        }
+        return false;
+
     }
 
     /**
@@ -2764,11 +2526,14 @@ public class IndexedMap<K, V> implements SortedMap<K, V>, Serializable, Cloneabl
      * @return {@code true} if the value was replaced
      */
     public boolean replace(K key, V oldValue, V newValue) {
-        if (containsKey(key) && CrossHash.objectEquals(get(key), value)) {
-            put(key, newValue);
-            return true;
-        } else
-            return false;
+        if (containsKey(key)) {
+            V v = get(key);
+            if (v == oldValue || (oldValue != null && oldValue.equals(v))) {
+                put(key, newValue);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
