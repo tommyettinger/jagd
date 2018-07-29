@@ -101,14 +101,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * Whether this set contains the key zero.
      */
     protected boolean containsNull;
-    /**
-     * The index of the first entry in iteration order. It is valid iff {@link #size} is nonzero; otherwise, it contains -1.
-     */
-    protected int first = -1;
-    /**
-     * The index of the last entry in iteration order. It is valid iff {@link #size} is nonzero; otherwise, it contains -1.
-     */
-    protected int last = -1;
     /*
      * For each entry, the next and the previous entry in iteration order, stored as <code>((prev & 0xFFFFFFFFL) << 32) | (next & 0xFFFFFFFFL)</code>. The first entry contains predecessor -1, and the
      * last entry contains successor -1.
@@ -493,11 +485,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             }
             key[pos] = k;
         }
-        if (size == 0) {
-            first = last = pos;
-        } else {
-            last = pos;
-        }
         order.add(pos);
         if (size++ >= maxFill)
             rehash(arraySize(size + 1, f));
@@ -505,11 +492,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     }
 
     public boolean addAt(final K k, final int idx) {
-        if (idx <= 0)
-            return addAndMoveToFirst(k);
-        else if (idx >= size)
-            return addAndMoveToLast(k);
-
         int pos;
         if (k == null) {
             if (containsNull)
@@ -569,16 +551,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             }
             key[pos] = k;
         }
-
-        if (size == 0) {
-            first = last = pos;
-            // Special case of SET_UPPER_LOWER( link[ pos ], -1, -1 );
-            //link[pos] = -1L;
-        } else {
-            //link[last] ^= ((link[last] ^ (pos & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            //link[pos] = ((last & 0xFFFFFFFFL) << 32) | (-1 & 0xFFFFFFFFL);
-            last = pos;
-        }
         order.add(pos);
         if (size++ >= maxFill)
             rehash(arraySize(size + 1, f));
@@ -633,9 +605,9 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             rehash(n / 2);
         return true;
     }
-
-    @SuppressWarnings("unchecked")
-    protected boolean rem(final Object k) {
+    
+    @Override
+    public boolean remove(final Object k) {
         if (k == null)
             return containsNull && removeNullEntry();
         K curr;
@@ -654,11 +626,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         }
     }
 
-    @Override
-    public boolean remove(final Object o) {
-        return rem(o);
-    }
-
     /**
      * Removes the first key in iteration order.
      *
@@ -668,18 +635,7 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     public K removeFirst() {
         if (size == 0)
             throw new NoSuchElementException();
-        final int pos = first;
-        order.removeIndex(0);
-        if (order.size > 0)
-            first = order.get(0);
-        else
-            first = -1;
-        // Abbreviated version of fixOrder(pos)
-        /*first = (int) link[pos];
-        if (0 <= first) {
-            // Special case of SET_PREV( link[ first ], -1 )
-            link[first] |= (-1 & 0xFFFFFFFFL) << 32;
-        }*/
+        final int pos = order.removeIndex(0);
         final K k = key[pos];
         size--;
         if (k == null) {
@@ -701,20 +657,7 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     public K removeLast() {
         if (size == 0)
             throw new NoSuchElementException();
-        final int pos = last;
-        order.pop();
-        if (order.size > 0)
-            last = order.get(order.size - 1);
-        else
-            last = -1;
-
-        // Abbreviated version of fixOrder(pos)
-        /*
-        last = (int) (link[pos] >>> 32);
-        if (0 <= last) {
-            // Special case of SET_NEXT( link[ last ], -1 )
-            link[last] |= -1 & 0xFFFFFFFFL;
-        }*/
+        final int pos = order.pop();
         final K k = key[pos];
         size--;
         if (k == null) {
@@ -729,47 +672,15 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     }
 
     private void moveIndexToFirst(final int i) {
-        if (size <= 1 || first == i)
+        if (size <= 1 || order.items[0] == i)
             return;
         DataCommon.moveToFirst(order, i);
-        if (last == i) {
-            last = order.peek();
-            //last = (int) (link[i] >>> 32);
-            // Special case of SET_NEXT( link[ last ], -1 );
-            //link[last] |= -1 & 0xFFFFFFFFL;
-        }/* else {
-            final long linki = link[i];
-            final int prev = (int) (linki >>> 32);
-            final int next = (int) linki;
-            link[prev] ^= ((link[prev] ^ (linki & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            link[next] ^= ((link[next] ^ (linki & 0xFFFFFFFF00000000L)) & 0xFFFFFFFF00000000L);
-        }
-        link[first] ^= ((link[first] ^ ((i & 0xFFFFFFFFL) << 32)) & 0xFFFFFFFF00000000L);
-        link[i] = ((-1 & 0xFFFFFFFFL) << 32) | (first & 0xFFFFFFFFL);
-        */
-        first = i;
     }
 
     private void moveIndexToLast(final int i) {
-        if (size <= 1 || last == i)
+        if (size <= 1 || order.items[size-1] == i)
             return;
         DataCommon.moveToLast(order, i);
-        if (first == i) {
-            first = order.get(0);
-            //first = (int) link[i];
-            // Special case of SET_PREV( link[ first ], -1 );
-            //link[first] |= (-1 & 0xFFFFFFFFL) << 32;
-        } /*else {
-            final long linki = link[i];
-            final int prev = (int) (linki >>> 32);
-            final int next = (int) linki;
-            link[prev] ^= ((link[prev] ^ (linki & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            link[next] ^= ((link[next] ^ (linki & 0xFFFFFFFF00000000L)) & 0xFFFFFFFF00000000L);
-        }
-        link[last] ^= ((link[last] ^ (i & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-        link[i] = ((last & 0xFFFFFFFFL) << 32) | (-1 & 0xFFFFFFFFL);
-        */
-        last = i;
     }
 
     /**
@@ -801,15 +712,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             }
         }
         key[pos] = k;
-        if (size == 0) {
-            first = last = pos;
-            // Special case of SET_UPPER_LOWER( link[ pos ], -1, -1 );
-            //link[pos] = -1L;
-        } else {
-            //link[first] ^= ((link[first] ^ ((pos & 0xFFFFFFFFL) << 32)) & 0xFFFFFFFF00000000L);
-            //link[pos] = ((-1 & 0xFFFFFFFFL) << 32) | (first & 0xFFFFFFFFL);
-            first = pos;
-        }
         order.insert(0, pos);
         if (size++ >= maxFill)
             rehash(arraySize(size, f));
@@ -846,15 +748,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             }
         }
         key[pos] = k;
-        if (size == 0) {
-            first = last = pos;
-            // Special case of SET_UPPER_LOWER( link[ pos ], -1, -1 );
-            //link[pos] = -1L;
-        } else {
-            //link[last] ^= ((link[last] ^ (pos & 0xFFFFFFFFL)) & 0xFFFFFFFFL);
-            //link[pos] = ((last & 0xFFFFFFFFL) << 32) | (-1 & 0xFFFFFFFFL);
-            last = pos;
-        }
         order.add(pos);
         if (size++ >= maxFill)
             rehash(arraySize(size, f));
@@ -990,7 +883,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         size = 0;
         containsNull = false;
         Arrays.fill(key, null);
-        first = last = -1;
         order.clear();
     }
 
@@ -1066,18 +958,9 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     protected int fixOrder(final int i) {
         if (size == 0) {
             order.clear();
-            first = last = -1;
             return 0;
         }
-        int idx = order.indexOf(i);
-        order.removeIndex(idx);
-        if (first == i) {
-            first = order.get(0);
-        }
-        if (last == i) {
-            last = order.peek();
-        }
-        return idx;
+        return DataCommon.removeValue(order, i);
     }
 
     /**
@@ -1089,16 +972,15 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      * @param d the destination position.
      */
     protected void fixOrder(int s, int d) {
-        if (size == 1) {
-            first = last = d;
+        if(size == 0)
+            return;
+        if (size == 1 || order.items[0] == s) {
             order.set(0, d);
-        } else if (first == s) {
-            first = d;
-            order.set(0, d);
-        } else if (last == s) {
-            last = d;
+        }
+        else if (order.items[order.size-1] == s) {
             order.set(order.size - 1, d);
-        } else {
+        }
+        else {
             order.set(order.indexOf(s), d);
         }
     }
@@ -1111,7 +993,7 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     public K first() {
         if (size == 0)
             throw new NoSuchElementException();
-        return key[first];
+        return key[order.items[0]];
     }
 
     /**
@@ -1122,7 +1004,7 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
     public K last() {
         if (size == 0)
             throw new NoSuchElementException();
-        return key[last];
+        return key[order.items[size-1]];
     }
 
     public SortedSet<K> tailSet(K from) {
@@ -1173,7 +1055,7 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         int index = -1;
 
         SetIterator() {
-            next = first;
+            next = order.items[0];
             index = 0;
         }
 
@@ -1253,15 +1135,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
                 else
                     next = -1;
             }
-            /*
-			 * Now we manually fix the pointers. Because of our knowledge of
-			 * next and prev, this is going to be faster than calling
-			 * fixOrder().
-			 */
-            if (prev == -1)
-                first = next;
-            if (next == -1)
-                last = prev;
             order.removeIndex(index);
             size--;
             int last, slot, pos = curr;
@@ -1432,10 +1305,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
             }
             newKey[pos] = k;
             oi[q] = pos;
-        }
-        if(sz > 0) {
-            first = oi[0];
-            last = oi[sz - 1];
         }
         n = newN;
         this.mask = mask;
@@ -1689,7 +1558,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         final K key[] = this.key = (K[]) new Object[n + 1];
         final IntArray order = this.order = new IntArray(n + 1);
         int prev = -1;
-        first = last = -1;
         K k;
         for (int i = size, pos; i-- != 0; ) {
             k = (K) s.readObject();
@@ -1701,11 +1569,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
                     while (!(key[pos = pos + 1 & mask] == null)) ;
             }
             key[pos] = k;
-            if (first != -1) {
-                last = pos;
-            } else {
-                first = last = pos;
-            }
             order.add(pos);
         }
     }
@@ -1763,8 +1626,6 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
         if (size < 2 || rng == null)
             return this;
         rng.shuffleInPlace(order);
-        first = order.get(0);
-        last = order.peek();
         return this;
     }
 
@@ -1787,87 +1648,9 @@ public class IndexedSet<K> implements SortedSet<K>, java.io.Serializable, Clonea
      */
     public IndexedSet<K> reorder(int... ordering) {
         DataCommon.reorder(order, ordering);
-        first = order.get(0);
-        last = order.peek();
         return this;
     }
 
-    private boolean alterEntry(final int pos, final K replacement) {
-        int rep;
-        if (replacement == null) {
-            if (containsNull)
-                return false;
-            rep = n;
-            containsNull = true;
-        } else {
-            K curr;
-            final K[] key = this.key;
-            shiftKeys(pos);
-            // The starting point.
-            if (!((curr = key[rep = (hasher.hash(replacement)) & mask]) == null)) {
-                if (hasher.areEqual(curr, replacement))
-                    return false;
-                while (!((curr = key[rep = rep + 1 & mask]) == null))
-                    if (hasher.areEqual(curr, replacement))
-                        return false;
-            }
-            key[rep] = replacement;
-        }
-        fixOrder(pos, rep);
-        return true;
-    }
-
-    private boolean alterNullEntry(final K replacement) {
-        containsNull = false;
-        key[n] = null;
-        int rep;
-        if (replacement == null) {
-            rep = n;
-            containsNull = true;
-        } else {
-            K curr;
-            final K[] key = this.key;
-            // The starting point.
-            if (!((curr = key[rep = (hasher.hash(replacement)) & mask]) == null)) {
-                if (hasher.areEqual(curr, replacement))
-                    return false;
-                while (!((curr = key[rep = rep + 1 & mask]) == null))
-                    if (hasher.areEqual(curr, replacement))
-                        return false;
-            }
-            key[rep] = replacement;
-        }
-        fixOrder(n, rep);
-        return true;
-    }
-
-    /*
-    public boolean alter(K original, K replacement)
-    {
-        if (original == null) {
-            if (containsNull) {
-                return replacement != null && alterNullEntry(replacement);
-            }
-            else
-                return add(replacement);
-        }
-        else if(hasher.areEqual(original, replacement))
-            return false;
-        K curr;
-        final K[] key = this.key;
-        int pos;
-        // The starting point.
-        if ((curr = key[pos = (hasher.hash(original)) & mask]) == null)
-            return add(replacement);
-        if (hasher.areEqual(original, curr))
-            return alterEntry(pos, replacement);
-        while (true) {
-            if ((curr = key[pos = (pos + 1) & mask]) == null)
-                return add(replacement);
-            if (hasher.areEqual(original, curr))
-                return alterEntry(pos, replacement);
-        }
-    }*/
     private int alterEntry(final int pos) {
         size--;
         int idx = fixOrder(pos);
