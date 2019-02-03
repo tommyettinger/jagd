@@ -7,7 +7,7 @@ import jagd.RNG;
 public class WFCTest {
     public static void main(String[] args)
     {
-        RNG random = new RNG(12345678);
+        RNG random = new RNG();
         int[][] grid = new int[32][32];
         char[][] dungeon = new char[][]{
                 "  ┌───────┐ ┌─────┐ ┌────────┐  ".toCharArray(),
@@ -53,8 +53,7 @@ public class WFCTest {
         // this specifies non-periodic input (meaning it doesn't wrap at edges), but periodic output, so it tiles.
         MimicWFC wfc = new MimicWFC(grid, 2, 64, 64, false, true, 1, 0);
         int i = 0;
-        while (!wfc.run(random, 1000000))
-            System.out.println((i += 1000000) + " attempts failed.");
+        while (!wfc.run(random, 1000000)) System.out.println((i += 1000000) + " attempts failed.");
         int[][] grid2 = wfc.result();
         for (int y = 0; y < 128; y++) { 
             for (int x = 0; x < 128; x++) {

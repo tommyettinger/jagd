@@ -1,7 +1,6 @@
 package jagd;
 
 import com.badlogic.gdx.math.GridPoint2;
-import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.IntArray;
 
 import java.io.Serializable;
@@ -52,7 +51,8 @@ public class RNG extends Random implements Serializable {
      * Default constructor; uses a random seed.
      */
     public RNG() {
-        this(MathUtils.random(0x8000000000000000L, 0x7FFFFFFFFFFFFFFFL));
+        this(NumberTools.splitMix64(NumberTools.doubleToLongBits(Math.random())) ^
+                NumberTools.splitMix64(NumberTools.doubleToLongBits(Math.random())));
     }
 
     /**
