@@ -7,41 +7,42 @@ import jagd.RNG;
 public class WFCTest {
     public static void main(String[] args)
     {
-        RNG random = new RNG();
+        RNG random = new RNG(1337);
         int[][] grid = new int[32][32];
         char[][] dungeon = new char[][]{
-                "  ┌───────┐ ┌─────┐ ┌────────┐  ".toCharArray(),
-                "┌─┤.......│ │.....└─┤........│  ".toCharArray(),
-                "│.└┐......│┌┴───....│........│  ".toCharArray(),
-                "│..├───┐..││.................│  ".toCharArray(),
-                "│..│   │..││.................├─┐".toCharArray(),
-                "│..└┐┌─┘..││....┌┐.....──────┘.│".toCharArray(),
-                "│...└┘....││..──┤│.............│".toCharArray(),
-                "│.........││....└┼─┐..........┌┘".toCharArray(),
-                "└┐.....┌──┘│.....└┐└┬────────┬┘ ".toCharArray(),
-                " │.....│   │......│ │........│  ".toCharArray(),
-                " ├─...┌┘  ┌┴─..┌──┴─┘........│  ".toCharArray(),
-                " │....│   │....│.............└─┐".toCharArray(),
-                "┌┘...┌┘   │....│...............│".toCharArray(),
-                "│....└─┐  │..┌─┴────...........│".toCharArray(),
-                "│......└┐ │..│...............─.│".toCharArray(),
-                "│.......└─┘..│.................│".toCharArray(),
-                "│..┌┐...........┌───...........│".toCharArray(),
-                "└──┘└─┐.........│............┌─┘".toCharArray(),
-                "      └───┐..│..│............│  ".toCharArray(),
-                "    ┌────┐└┬─┘..└┬───┐......┌┘  ".toCharArray(),
-                " ┌──┘....│┌┘.....└─┐┌┘..─┬──┘   ".toCharArray(),
-                "┌┘.......││........├┘....└┐     ".toCharArray(),
-                "│........├┘........│......└┐    ".toCharArray(),
-                "│........│...─┐....│.......└┐   ".toCharArray(),
-                "└┐....│..│....│....│........│   ".toCharArray(),
-                " └─┬──┘.......│..──┘..┌┐....│   ".toCharArray(),
-                "   │..........│.......││....│   ".toCharArray(),
-                "  ┌┘.....│....│......┌┘│...┌┘   ".toCharArray(),
-                "  │......├────┤..──┬─┘ │...│    ".toCharArray(),
-                "  │.....┌┘    │....│ ┌─┘..─┤    ".toCharArray(),
-                "  └──┐..│     │....│ │.....│    ".toCharArray(),
-                "     └──┘     └────┘ └─────┘    ".toCharArray(),
+                "                                  ".toCharArray(),
+                "    ┌───────┐ ┌─────┐ ┌────────┐  ".toCharArray(),
+                "  ┌─┤.......│ │.....└─┤........│  ".toCharArray(),
+                "  │.└┐......│┌┴───....│........│  ".toCharArray(),
+                "  │..├───┐..││.................│  ".toCharArray(),
+                "  │..│   │..││.................├─┐".toCharArray(),
+                "  │..└┐┌─┘..││....┌┐.....──────┘.│".toCharArray(),
+                "  │...└┘....││..──┤│.............│".toCharArray(),
+                "  │.........││....└┼─┐..........┌┘".toCharArray(),
+                "  └┐.....┌──┘│.....└┐└┬────────┬┘ ".toCharArray(),
+                "   │.....│   │......│ │........│  ".toCharArray(),
+                "   ├─...┌┘  ┌┴─..┌──┴─┘........│  ".toCharArray(),
+                "   │....│   │....│.............└─┐".toCharArray(),
+                "  ┌┘...┌┘   │....│...............│".toCharArray(),
+                "  │....└─┐  │..┌─┴────...........│".toCharArray(),
+                "  │......└┐ │..│...............─.│".toCharArray(),
+                "  │.......└─┘..│.................│".toCharArray(),
+                "  │..┌┐...........┌───...........│".toCharArray(),
+                "  └──┘└─┐.........│............┌─┘".toCharArray(),
+                "        └───┐..│..│............│  ".toCharArray(),
+                "      ┌────┐└┬─┘..└┬───┐......┌┘  ".toCharArray(),
+                "   ┌──┘....│┌┘.....└─┐┌┘..─┬──┘   ".toCharArray(),
+                "  ┌┘.......││........├┘....└┐     ".toCharArray(),
+                "  │........├┘........│......└┐    ".toCharArray(),
+                "  │........│...─┐....│.......└┐   ".toCharArray(),
+                "  └┐....│..│....│....│........│   ".toCharArray(),
+                "   └─┬──┘.......│..──┘..┌┐....│   ".toCharArray(),
+                "     │..........│.......││....│   ".toCharArray(),
+                "    ┌┘.....│....│......┌┘│...┌┘   ".toCharArray(),
+                "    │......├────┤..──┬─┘ │...│    ".toCharArray(),
+                "    │.....┌┘    │....│ ┌─┘..─┤    ".toCharArray(),
+                "    └──┐..│     │....│ │.....│    ".toCharArray(),
+                "       └──┘     └────┘ └─────┘    ".toCharArray(),
         };
         for (int y = 0; y < 32; y++) {
             for (int x = 0; x < 32; x++) {
@@ -51,24 +52,24 @@ public class WFCTest {
         // this uses order 2, which has slightly weaker quality but will finish quickly and more reliably.
         // you can try order 3 with some inputs, but it is much less likely to finish at all.
         // this specifies non-periodic input (meaning it doesn't wrap at edges), but periodic output, so it tiles.
-        MimicWFC wfc = new MimicWFC(grid, 2, 64, 64, false, true, 1, 0);
+        MimicWFC wfc = new MimicWFC(grid, 2, 128, 128, false, false, 1, 1);
         int i = 0;
-        while (!wfc.run(random, 1000000)) System.out.println((i += 1000000) + " attempts failed.");
+        while (!wfc.run(random, 1000000)) System.out.println((++i) + " attempts failed.");
         int[][] grid2 = wfc.result();
         for (int y = 0; y < 128; y++) { 
             for (int x = 0; x < 128; x++) {
-                System.out.print((char) grid2[x & 63][y & 63]);
+                System.out.print((char) grid2[x][y]);
             }
             System.out.println();
         }
         System.out.println();
         i = 0;
         while (!wfc.run(random, 1000000))
-            System.out.println((i += 1000000) + " attempts failed.");
+            System.out.println((++i) + " attempts failed.");
         grid2 = wfc.result();
         for (int y = 0; y < 128; y++) {
             for (int x = 0; x < 128; x++) {
-                System.out.print((char) grid2[x & 63][y & 63]);
+                System.out.print((char) grid2[x][y]);
             }
             System.out.println();
         }

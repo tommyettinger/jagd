@@ -49,9 +49,55 @@ public class MimicWFC {
     private int order;
     private Array<IntArray> patterns;
     private IntIntMap choices, revChoices;
-    private int ground;
+    private Integer surround;
 
-    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, int ground)
+    /**
+     * Constructs a MimicWFC that will imitate a given 2D int array. The order should usually be 2, the width and height
+     * do not need to correspond to the dimensions of itemGrid, and unless you have a particular usage in mind,
+     * periodicInput and periodicOutput are usually both false. You should usually use 1 for symmetry, and some
+     * kinds of items this could mimic might not work at all with other symmetry values. If surround is non-zero (in
+     * most usage it should be zero), the square of items in the bottom right corner of itemGrid (which will be order
+     * wide and order high) will be duplicated over the whole border of the result. This allows maps to be always
+     * islands if the corner is water, and allows textures for artwork to always have a frame. If using surround, the
+     * block of items in the corner must be allowed to have itself as a neighbor in all directions (e.g. when order is
+     * 2, a 2x2 block of identical items that can connect without issues, such as a solid color or something referring
+     * to a seamlessly tiling texture).
+     * @param itemGrid the grid to imitate, as a 2D int array that should be rectangular
+     * @param order the size of the nearby area to analyze per cell; usually 2, but may be higher for some itemGrids
+     * @param width the width of the output area to generate
+     * @param height the height of the output area to generate
+     * @param periodicInput usually false, but may be set to true if the input already tiles seamlessly
+     * @param periodicOutput true if the output should tile seamlessly on x and y, or false otherwise (true can be slow)
+     * @param symmetry must be greater than 0, and is usually 1, but can be as high as 8
+     * @param surround if non-zero, the item in the bottom right corner will enclose the output (effectively forcing
+     *                 periodic output); the map will be generated normally if zero
+     */
+    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, int surround)
+    {
+        this(itemGrid, order, width, height, periodicInput, periodicOutput, symmetry, surround != 0);
+    }
+
+    /**
+     * Constructs a MimicWFC that will imitate a given 2D int array. The order should usually be 2, the width and height
+     * do not need to correspond to the dimensions of itemGrid, and unless you have a particular usage in mind,
+     * periodicInput, periodicOutput, and ground are usually all false. You should usually use 1 for symmetry, and some
+     * kinds of items this could mimic might not work at all with other symmetry values. If surround is true, the square
+     * of items in the bottom right corner of itemGrid (which will be order wide and order high) will be duplicated over
+     * the whole border of the result. This allows maps to be always islands if the corner is water, and allows textures
+     * for artwork to always have a frame. If using surround, the block of items in the corner must be allowed to have
+     * itself as a neighbor in all directions (e.g. when order is 2, a 2x2 block of identical items that can connect
+     * without issues, such as a solid color or something referring to a seamlessly tiling texture).
+     * @param itemGrid the grid to imitate, as a 2D int array that should be rectangular
+     * @param order the size of the nearby area to analyze per cell; usually 2, but may be higher for some itemGrids
+     * @param width the width of the output area to generate
+     * @param height the height of the output area to generate
+     * @param periodicInput usually false, but may be set to true if the input already tiles seamlessly
+     * @param periodicOutput true if the output should tile seamlessly on x and y, or false otherwise (true can be slow)
+     * @param symmetry must be greater than 0, and is usually 1, but can be as high as 8
+     * @param surround if true, the item in the bottom right corner will enclose the output (effectively forcing
+     *                 periodic output); the map will be generated normally if false
+     */
+    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, boolean surround)
     {
         FMX = width;
         FMY = height;
@@ -60,7 +106,6 @@ public class MimicWFC {
         periodic = periodicOutput;
 
         int SMX = itemGrid.length, SMY = itemGrid[0].length;
-        //colors = new List<Color>();
         choices = new IntIntMap(SMX * SMY);
         revChoices = new IntIntMap(SMX * SMY);
         int[][] sample = new int[SMX][SMY];
@@ -78,14 +123,6 @@ public class MimicWFC {
             }
         }
 
-//        int C = choices.size;
-//        long W = MathExtras.raiseToPower(C, order * order);
-
-
-
-//        Dictionary<long, int> weights = new Dictionary<long, int>();
-//        List<long> ordering = new List<long>();
-//        IndexedMap<int[], Integer> weights = new IndexedMap<int[], Integer>(CrossHash.intHasher);
         final int yLimit = (periodicInput ? SMY : SMY - order + 1);
         final int xLimit = (periodicInput ? SMX : SMX - order + 1);
         ObjectIntMap<IntArray> weights = new ObjectIntMap<IntArray>(yLimit * xLimit);
@@ -115,14 +152,22 @@ public class MimicWFC {
         }
 
         totalOptions = weights.size;
-        this.ground = (ground + totalOptions) % totalOptions;
+//        this.surround = surround == 0 ? 0 : 1;//(surround + totalOptions) % totalOptions;
+//        this.surround = (surround + totalOptions) % totalOptions;
         patterns = weights.keys().toArray();//new int[totalOptions][];
         baseWeights = weights.values().toArray();// new double[totalOptions];
+        if(surround)
+        {
+            this.surround = patterns.indexOf(ps[0], false);
+            baseWeights.incr(this.surround, 2 - baseWeights.get(this.surround));
+        }
+        else
+            this.surround = null;
 //        for (int w = 0; w < totalOptions; w++) {
 //            patterns[w] = weights.keyAt(w);
 //            baseWeights[w] = weights.getAt(w);
 //        }
-        
+
 
         propagator = new int[4][][];
         IntArray list = new IntArray(totalOptions);
@@ -132,44 +177,48 @@ public class MimicWFC {
             for (int t = 0; t < totalOptions; t++)
             {
                 list.clear();
-                for (int t2 = 0; t2 < totalOptions; t2++) if (agrees(patterns.get(t), patterns.get(t2), DX[d], DY[d])) list.add(t2);
+                for (int t2 = 0; t2 < totalOptions; t2++)
+                {
+                    if (agrees(patterns.get(t), patterns.get(t2), DX[d], DY[d]))
+                        list.add(t2);
+                }
                 propagator[d][t] = list.toArray();
             }
         }
     }
 
-    private long index(byte[] p, long C)
-    {
-        long result = 0, power = 1;
-        for (int i = 0; i < p.length; i++)
-        {
-            result += p[p.length - 1 - i] * power;
-            power *= C;
-        }
-        return result;
-    }
-
-    private byte[] patternFromIndex(long ind, long power, long C)
-    {
-        long residue = ind;
-        byte[] result = new byte[order * order];
-
-        for (int i = 0; i < result.length; i++)
-        {
-            power /= C;
-            int count = 0;
-
-            while (residue >= power)
-            {
-                residue -= power;
-                count++;
-            }
-
-            result[i] = (byte)count;
-        }
-
-        return result;
-    }
+//    private long index(byte[] p, long C)
+//    {
+//        long result = 0, power = 1;
+//        for (int i = 0; i < p.length; i++)
+//        {
+//            result += p[p.length - 1 - i] * power;
+//            power *= C;
+//        }
+//        return result;
+//    }
+//
+//    private byte[] patternFromIndex(long ind, long power, long C)
+//    {
+//        long residue = ind;
+//        byte[] result = new byte[order * order];
+//
+//        for (int i = 0; i < result.length; i++)
+//        {
+//            power /= C;
+//            int count = 0;
+//
+//            while (residue >= power)
+//            {
+//                residue -= power;
+//                count++;
+//            }
+//
+//            result[i] = (byte)count;
+//        }
+//
+//        return result;
+//    }
 
 //    int[] pattern (Func<int, int, byte> f)
 //    {
@@ -287,7 +336,7 @@ public class MimicWFC {
             observed = new int[FMX * FMY];
             for (int i = 0; i < wave.length; i++) {
                 for (int t = 0; t < totalOptions; t++) {
-                    if (wave[i][t]) { 
+                    if (wave[i][t]) {
                         observed[i] = t;
                         break;
                     }
@@ -303,7 +352,7 @@ public class MimicWFC {
             sum += (distribution[t] = wave[argmin][t] ? baseWeights.get(t) : 0);
         }
         int r = 0;
-        sum = random.nextDouble(sum);
+        sum *= random.nextDouble();
         for (; r < totalOptions; r++) {
             if((x += distribution[r]) > sum)
                 break;
@@ -447,19 +496,39 @@ public class MimicWFC {
         }
 
 
-        if (ground != 0)
+        if (surround != null)
         {
+            final int g = surround;
             for (int x = 0; x < FMX; x++)
             {
-                for (int t = 0; t < totalOptions; t++) if (t != ground) ban(x + (FMY - 1) * FMX, t);
-                for (int y = 0; y < FMY - 1; y++) ban(x + y * FMX, ground);
+                for (int t = 0; t < totalOptions; t++) {
+                    if (t != g)
+                    {
+                        ban(x, t);
+                    }
+                    if (t != g)
+                    {
+                        ban(x + (FMY - 1) * FMX, t);
+                    }
+                }
             }
-
+            for (int y = 1; y < FMY - 1; y++)
+            {
+                for (int t = 0; t < totalOptions; t++) {
+                    if (t != g)
+                    {
+                        ban(y * FMX, t);
+                    }
+                    if(t != g)
+                    {
+                        ban(FMX - 1 + y * FMX, t);
+                    }
+                }
+            }
             propagate();
         }
     }
     private static int[] DX = { -1, 0, 1, 0 };
     private static int[] DY = { 0, 1, 0, -1 };
     private static int[] OPPOSITE = { 2, 3, 0, 1 };
-
 }
