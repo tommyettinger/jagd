@@ -52,23 +52,24 @@ public class WFCTest {
         // this uses order 2, which has slightly weaker quality but will finish quickly and more reliably.
         // you can try order 3 with some inputs, but it is much less likely to finish at all.
         // this specifies non-periodic input (meaning it doesn't wrap at edges), but periodic output, so it tiles.
-        MimicWFC wfc = new MimicWFC(grid, 2, 128, 128, false, false, 1, 1);
+        MimicWFC wfc = new MimicWFC(grid, 2, 80, 80, false, false, 1, Integer.valueOf(' '));
         int i = 0;
         while (!wfc.run(random, 1000000)) System.out.println((++i) + " attempts failed.");
         int[][] grid2 = wfc.result();
-        for (int y = 0; y < 128; y++) { 
-            for (int x = 0; x < 128; x++) {
+        for (int y = 0; y < 80; y++) { 
+            for (int x = 0; x < 80; x++) {
                 System.out.print((char) grid2[x][y]);
             }
             System.out.println();
         }
         System.out.println();
+        wfc = new MimicWFC(grid, 2, 80, 80, false, false, 1, Integer.valueOf('.'));
         i = 0;
         while (!wfc.run(random, 1000000))
             System.out.println((++i) + " attempts failed.");
         grid2 = wfc.result();
-        for (int y = 0; y < 128; y++) {
-            for (int x = 0; x < 128; x++) {
+        for (int y = 0; y < 80; y++) {
+            for (int x = 0; x < 80; x++) {
                 System.out.print((char) grid2[x][y]);
             }
             System.out.println();

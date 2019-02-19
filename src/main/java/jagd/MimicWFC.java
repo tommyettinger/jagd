@@ -55,8 +55,25 @@ public class MimicWFC {
      * Constructs a MimicWFC that will imitate a given 2D int array. The order should usually be 2, the width and height
      * do not need to correspond to the dimensions of itemGrid, and unless you have a particular usage in mind,
      * periodicInput and periodicOutput are usually both false. You should usually use 1 for symmetry, and some
-     * kinds of items this could mimic might not work at all with other symmetry values. If surround is non-zero (in
-     * most usage it should be zero), the square of items in the bottom right corner of itemGrid (which will be order
+     * kinds of items this could mimic might not work at all with other symmetry values.
+     * @param itemGrid the grid to imitate, as a 2D int array that should be rectangular
+     * @param order the size of the nearby area to analyze per cell; usually 2, but may be higher for some itemGrids
+     * @param width the width of the output area to generate
+     * @param height the height of the output area to generate
+     * @param periodicInput usually false, but may be set to true if the input already tiles seamlessly
+     * @param periodicOutput true if the output should tile seamlessly on x and y, or false otherwise (true can be slow)
+     * @param symmetry must be greater than 0, and is usually 1, but can be as high as 8
+     */
+    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry)
+    {
+        this(itemGrid, order, width, height, periodicInput, periodicOutput, symmetry, null);
+    }
+    /**
+     * Constructs a MimicWFC that will imitate a given 2D int array. The order should usually be 2, the width and height
+     * do not need to correspond to the dimensions of itemGrid, and unless you have a particular usage in mind,
+     * periodicInput and periodicOutput are usually both false. You should usually use 1 for symmetry, and some
+     * kinds of items this could mimic might not work at all with other symmetry values. If surround is true (but in
+     * most usage it should be false), the square of items in the upper left corner of itemGrid (which will be order
      * wide and order high) will be duplicated over the whole border of the result. This allows maps to be always
      * islands if the corner is water, and allows textures for artwork to always have a frame. If using surround, the
      * block of items in the corner must be allowed to have itself as a neighbor in all directions (e.g. when order is
@@ -69,12 +86,12 @@ public class MimicWFC {
      * @param periodicInput usually false, but may be set to true if the input already tiles seamlessly
      * @param periodicOutput true if the output should tile seamlessly on x and y, or false otherwise (true can be slow)
      * @param symmetry must be greater than 0, and is usually 1, but can be as high as 8
-     * @param surround if non-zero, the item in the bottom right corner will enclose the output (effectively forcing
-     *                 periodic output); the map will be generated normally if zero
+     * @param surround if true, the item in the bottom right corner will enclose the output (effectively forcing
+     *                 periodic output); the map will be generated normally if false
      */
-    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, int surround)
+    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, boolean surround)
     {
-        this(itemGrid, order, width, height, periodicInput, periodicOutput, symmetry, surround != 0);
+        this(itemGrid, order, width, height, periodicInput, periodicOutput, symmetry, surround ? itemGrid[0][0] : null);
     }
 
     /**
@@ -86,7 +103,9 @@ public class MimicWFC {
      * the whole border of the result. This allows maps to be always islands if the corner is water, and allows textures
      * for artwork to always have a frame. If using surround, the block of items in the corner must be allowed to have
      * itself as a neighbor in all directions (e.g. when order is 2, a 2x2 block of identical items that can connect
-     * without issues, such as a solid color or something referring to a seamlessly tiling texture).
+     * without issues, such as a solid color or something referring to a seamlessly tiling texture). If surround is
+     * non-null, then it must appear somewhere in itemGrid so neighbor cells can be placed next to the border (otherwise
+     * the map will be purely the border item).
      * @param itemGrid the grid to imitate, as a 2D int array that should be rectangular
      * @param order the size of the nearby area to analyze per cell; usually 2, but may be higher for some itemGrids
      * @param width the width of the output area to generate
@@ -94,10 +113,12 @@ public class MimicWFC {
      * @param periodicInput usually false, but may be set to true if the input already tiles seamlessly
      * @param periodicOutput true if the output should tile seamlessly on x and y, or false otherwise (true can be slow)
      * @param symmetry must be greater than 0, and is usually 1, but can be as high as 8
-     * @param surround if true, the item in the bottom right corner will enclose the output (effectively forcing
-     *                 periodic output); the map will be generated normally if false
+     * @param surround if null, the map will be generated normally; if any int value, this will wrap the map's borders
+     *                 in that int value (which is often in the same range of int used in itemGrid). Note that 0 will
+     *                 wrap the map in the value 0, which may be different from what is intended.
      */
-    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput, int symmetry, boolean surround)
+    public MimicWFC(int[][] itemGrid, int order, int width, int height, boolean periodicInput, boolean periodicOutput,
+                    int symmetry, Integer surround)
     {
         FMX = width;
         FMY = height;
@@ -150,19 +171,31 @@ public class MimicWFC {
                 }
             }
         }
+        IntArray pat = null;
+        if(surround != null)
+        {
+            pat = new IntArray(order * order);
+            int surr = choices.get(surround, 0);
+            for (int dy = 0; dy < order; dy++) {
+                for (int dx = 0; dx < order; dx++) {
+                    pat.add(surr);
+                }
+            }
+            weights.getAndIncrement(pat, 0, 1);
+        }
+        else
+            this.surround = null;
 
         totalOptions = weights.size;
 //        this.surround = surround == 0 ? 0 : 1;//(surround + totalOptions) % totalOptions;
 //        this.surround = (surround + totalOptions) % totalOptions;
         patterns = weights.keys().toArray();//new int[totalOptions][];
         baseWeights = weights.values().toArray();// new double[totalOptions];
-        if(surround)
+        if(pat != null)
         {
-            this.surround = patterns.indexOf(ps[0], false);
-            baseWeights.incr(this.surround, 2 - baseWeights.get(this.surround));
+            this.surround = patterns.indexOf(pat, false);
+            baseWeights.set(this.surround, 2);
         }
-        else
-            this.surround = null;
 //        for (int w = 0; w < totalOptions; w++) {
 //            patterns[w] = weights.keyAt(w);
 //            baseWeights[w] = weights.getAt(w);
