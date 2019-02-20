@@ -181,25 +181,19 @@ public class MimicWFC {
                     pat.add(surr);
                 }
             }
-            weights.getAndIncrement(pat, 0, 1);
+            weights.getAndIncrement(pat, 0, 2);
         }
         else
             this.surround = null;
 
         totalOptions = weights.size;
-//        this.surround = surround == 0 ? 0 : 1;//(surround + totalOptions) % totalOptions;
-//        this.surround = (surround + totalOptions) % totalOptions;
         patterns = weights.keys().toArray();//new int[totalOptions][];
         baseWeights = weights.values().toArray();// new double[totalOptions];
         if(pat != null)
         {
             this.surround = patterns.indexOf(pat, false);
-            baseWeights.set(this.surround, 2);
+            baseWeights.set(this.surround, 1);
         }
-//        for (int w = 0; w < totalOptions; w++) {
-//            patterns[w] = weights.keyAt(w);
-//            baseWeights[w] = weights.getAt(w);
-//        }
 
 
         propagator = new int[4][][];
