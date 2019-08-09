@@ -22,8 +22,7 @@ import java.util.ArrayList;
  * Created by Tommy Ettinger on 10/20/2015.
  */
 public class PoissonDisk {
-    private static final float rootTwo = (float) Math.sqrt(2),
-            pi2 = (float) (Math.PI * 2.0);
+    private static final float rootTwo = (float) Math.sqrt(2);
 
     private static final int defaultPointsPlaced = 10;
 
@@ -289,9 +288,9 @@ public class PoissonDisk {
                 //add next point
                 //get random point around
                 float radius = rng.betweenInclusive(minimumDistance, maximumDistance);
-                float angle = pi2 * rng.nextFloat();
+                float angle = rng.nextFloat();
 
-                Vector2 q = new Vector2(point.x + radius * MathUtils.sin(angle), point.y + radius * MathUtils.cos(angle));
+                Vector2 q = new Vector2(point.x + radius * TrigTools.sin_(angle), point.y + radius * TrigTools.cos_(angle));
                 //end get random point around
 
                 if (q.x >= minX && q.x <= maxX &&
