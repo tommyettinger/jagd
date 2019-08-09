@@ -221,6 +221,117 @@ public class Region implements Collection<GridPoint2>, Serializable {
         }
     }
     /**
+     * Constructs a Region with the given rectangular byte array, with width of map.length and height of
+     * map[0].length, any value that equals yes is considered "on", and any other value considered "off."
+     * @param map a rectangular 2D byte array where an byte == yes is on and everything else is off
+     * @param yes which byte to encode as "on"; represented as an int because most math ops on bytes produce ints
+     */
+    public Region(final byte[][] map, final int yes)
+    {
+        width = map.length;
+        height = map[0].length;
+        ySections = (height + 63) >> 6;
+        yEndMask = -1L >>> (64 - (height & 63));
+        data = new long[width * ySections];
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if(map[x][y] == yes) data[x * ySections + (y >> 6)] |= 1L << (y & 63);
+            }
+        }
+    }
+    /**
+     * Reassigns this Region with the given rectangular byte array, reusing the current data storage (without
+     * extra allocations) if this.width == map.length and this.height == map[0].length. The current values stored in
+     * this are always cleared, then any value that equals yes is considered "on", and any other value considered "off."
+     * @param map a rectangular 2D byte array where an byte == yes is on and everything else is off
+     * @param yes which byte to encode as "on"; represented as an int because most math ops on bytes produce ints
+     * @return this for chaining
+     */
+    public Region refill(final byte[][] map, final int yes) {
+        if (map != null && map.length > 0 && width == map.length && height == map[0].length) {
+            Arrays.fill(data, 0L);
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    data[x * ySections + (y >> 6)] |= ((map[x][y] == yes) ? 1L : 0L) << (y & 63);
+                }
+            }
+            return this;
+        } else {
+            width = (map == null) ? 0 : map.length;
+            height = (map == null || map.length <= 0) ? 0 : map[0].length;
+            ySections = (height + 63) >> 6;
+            yEndMask = -1L >>> (64 - (height & 63));
+            data = new long[width * ySections];
+            for (int x = 0; x < width; x++) {
+                for (int y = 0; y < height; y++) {
+                    if(map[x][y] == yes) data[x * ySections + (y >> 6)] |= 1L << (y & 63);
+                }
+            }
+            return this;
+        }
+    }
+    /**
+     * Constructs this Region using a byte[][], treating cells as on if they are greater than or equal to lower
+     * and less than upper, or off otherwise.
+     * @param map a byte[][] that should have some values between lower and upper
+     * @param lower lower bound, inclusive; all on cells will have values in map that are at least equal to lower
+     * @param upper upper bound, exclusive; all on cells will have values in map that are less than upper
+     */
+    public Region(final byte[][] map, final int lower, final int upper)
+    {
+        width = map.length;
+        height = map[0].length;
+        ySections = (height + 63) >> 6;
+        yEndMask = -1L >>> (64 - (height & 63));
+        data = new long[width * ySections];
+        byte[] column;
+        for (int x = 0; x < width; x++) {
+            column = map[x];
+            for (int y = 0; y < height; y++) {
+                if(column[y] >= lower && column[y] < upper) data[x * ySections + (y >> 6)] |= 1L << (y & 63);
+            }
+        }
+    }
+
+    /**
+     * Reassigns this Region with the given rectangular byte array, reusing the current data storage (without
+     * extra allocations) if this.width == map.length and this.height == map[0].length. The current values stored in
+     * this are always cleared, then cells are treated as on if they are greater than or equal to lower and less than
+     * upper, or off otherwise.
+     * @param map a rectangular 2D byte array that should have some values between lower and upper
+     * @param lower lower bound, inclusive; all on cells will have values in map that are at least equal to lower
+     * @param upper upper bound, exclusive; all on cells will have values in map that are less than upper
+     * @return this for chaining
+     */
+    public Region refill(final byte[][] map, final int lower, final int upper) {
+        if (map != null && map.length > 0 && width == map.length && height == map[0].length) {
+            Arrays.fill(data, 0L);
+            byte[] column;
+            for (int x = 0; x < width; x++) {
+                column = map[x];
+                for (int y = 0; y < height; y++) {
+                    data[x * ySections + (y >> 6)] |= ((column[y] >= lower && column[y] < upper) ? 1L : 0L) << (y & 63);
+                }
+            }
+            return this;
+        } else {
+            width = (map == null) ? 0 : map.length;
+            height = (map == null || map.length <= 0) ? 0 : map[0].length;
+            ySections = (height + 63) >> 6;
+            yEndMask = -1L >>> (64 - (height & 63));
+            data = new long[width * ySections];
+            byte[] column;
+            for (int x = 0; x < width; x++) {
+                column = map[x];
+                for (int y = 0; y < height; y++) {
+                    if(column[y] >= lower && column[y] < upper) data[x * ySections + (y >> 6)] |= 1L << (y & 63);
+                }
+            }
+            return this;
+        }
+    }
+
+    /**
      * Constructs a Region with the given rectangular int array, with width of map.length and height of
      * map[0].length, any value that equals yes is considered "on", and any other value considered "off."
      * @param map a rectangular 2D int array where an int == yes is on and everything else is off
