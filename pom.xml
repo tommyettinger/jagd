@@ -53,9 +53,9 @@
         <maven.resources.version>3.1.0</maven.resources.version>
         <maven.source.version>3.0.1</maven.source.version>
         <maven.gpg.version>1.6</maven.gpg.version>
-        <jdk.version>1.6</jdk.version>
+        <jdk.version>1.7</jdk.version>
         <junit.version>4.11</junit.version>
-        <gdx.version>1.9.8</gdx.version>
+        <gdx.version>1.9.10</gdx.version>
     </properties>
 
 
