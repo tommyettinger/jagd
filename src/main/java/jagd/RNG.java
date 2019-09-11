@@ -2,9 +2,17 @@ package jagd;
 
 import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.utils.IntArray;
+import com.badlogic.gdx.utils.NumberUtils;
 
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Random;
 
 import static com.badlogic.gdx.utils.NumberUtils.intBitsToFloat;
 
@@ -26,20 +34,6 @@ public class RNG extends Random implements Serializable {
      * The state of this RNG as a single long. This can be set to any long without losing statistical quality.
      */
     public long state;
-    /**
-     * A very small multiplier used to reduce random numbers to from the {@code [0.0,9007199254740991.0)} range to the
-     * {@code [0.0,1.0)} range. Equivalent to {@code 1.0 / (1 << 53)}, if that number makes more sense to you, but the
-     * source uses the hexadecimal double literal {@code 0x1p-53}. The hex literals are a nice "hidden feature" of Java
-     * 5 onward, and allow exact declaration of floating-point numbers without precision loss from decimal conversion.
-     */
-    protected static final double DOUBLE_UNIT = 0x1p-53; // more people should know about hex double literals!
-    /**
-     * A very small multiplier used to reduce random numbers to from the {@code [0.0,16777216.0)} range to the
-     * {@code [0.0,1.0)} range. Equivalent to {@code 1.0f / (1 << 24)}, if that number makes more sense to you, but the
-     * source uses the hexadecimal double literal {@code 0x1p-24f}. The hex literals are a nice "hidden feature" of Java
-     * 5 onward, and allow exact declaration of floating-point numbers without precision loss from decimal conversion.
-     */
-    protected static final float FLOAT_UNIT = 0x1p-24f;
 
     protected double nextNextGaussian;
     protected boolean haveNextNextGaussian = false;
@@ -51,11 +45,12 @@ public class RNG extends Random implements Serializable {
      * Default constructor; uses a random seed.
      */
     public RNG() {
-        this(NumberTools.splitMix64(NumberTools.doubleToLongBits(Math.random())) ^
-                NumberTools.splitMix64(NumberTools.doubleToLongBits(Math.random())));
+        this(determine(NumberUtils.doubleToLongBits(Math.random())) ^
+                determine(NumberUtils.doubleToLongBits(Math.random())));
     }
 
     /**
+     * Uses the given seed verbatim.
      * @param seed any long
      */
     public RNG(long seed) {
@@ -63,13 +58,77 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
-     * String-seeded constructor; uses a platform-independent hash of the String (it does not use String.hashCode) as a
-     * seed for this RNG.
-     * @param seedString any CharSequence, such as a String or StringBuilder; if null this will use the seed 0
+     * String-seeded constructor; uses {@link #determine(long)} called on String.hashCode() as a seed for this RNG, or 0
+     * if seedString is null.
+     * @param seedString any String; if null this will use the seed 0
      */
-    public RNG(CharSequence seedString) {
-        this(CrossHash.hash64(seedString));
+    public RNG(String seedString) {
+        this(seedString == null ? 0L : determine(seedString.hashCode()));
     }
+
+    /**
+     * Static randomizing method that takes its state as a parameter; state is expected to change between calls to this.
+     * It is recommended that you use {@code RNG.determine(++state)} or {@code RNG.determine(--state)} to
+     * produce a sequence of different numbers, but you can also use {@code RNG.determine(state += 12345L)} or
+     * any odd-number increment. All longs are accepted by this method, and all longs can be produced; passing 0 here
+     * will return 0.
+     * @param state any long; subsequent calls should change by an odd number, such as with {@code ++state}
+     * @return any long
+     */
+    public static long determine(long state)
+    {
+        return (state = ((state = (state ^ (state << 41 | state >>> 23) ^ (state << 17 | state >>> 47)) * 0x369DEA0F31A53F85L) ^ state >>> 37 ^ state >>> 25) * 0xDB4F0B9175AE2165L) ^ state >>> 28;
+    }
+
+    /**
+     * Static randomizing method that takes its state as a parameter and limits output to an int between 0 (inclusive)
+     * and bound (exclusive); state is expected to change between calls to this. It is recommended that you use
+     * {@code RNG.determineBounded(++state, bound)} or {@code RNG.determineBounded(--state, bound)} to
+     * produce a sequence of different numbers, but you can also use
+     * {@code RNG.determineBounded(state += 12345L, bound)} or any odd-number increment. All longs are accepted
+     * by this method, but not all ints between 0 and bound are guaranteed to be produced with equal likelihood (for any
+     * odd-number values for bound, this isn't possible for most generators). The bound can be negative.
+     * @param state any long; subsequent calls should change by an odd number, such as with {@code ++state}
+     * @param bound the outer exclusive bound, as an int
+     * @return an int between 0 (inclusive) and bound (exclusive)
+     */
+    public static int determineBounded(long state, final int bound)
+    {
+        return (int)((bound * (((state = ((state = (state ^ (state << 41 | state >>> 23) ^ (state << 17 | state >>> 47)) * 0x369DEA0F31A53F85L) ^ state >>> 37 ^ state >>> 25) * 0xDB4F0B9175AE2165L) ^ state >>> 28) & 0xFFFFFFFFL)) >> 32);
+    }
+
+    /**
+     * Returns a random float that is deterministic based on state; if state is the same on two calls to this, this will
+     * return the same float. This is expected to be called with a changing variable, e.g.
+     * {@code RNG.determineFloat(++state)}, where the increment for state should be odd but otherwise doesn't really
+     * matter. This should tolerate just about any increment as long as it is odd. The period is 2 to the 64 if you
+     * increment or decrement by 1, but there are only 2 to the 30 possible floats between 0 and 1, and this can only
+     * generate 2 to the 24 of them.
+     * @param state a variable that should be different every time you want a different random result;
+     *              using {@code RNG.determineFloat(++state)} is recommended to go forwards or
+     *              {@code RNG.determineFloat(--state)} to generate numbers in reverse order
+     * @return a pseudo-random float between 0f (inclusive) and 1f (exclusive), determined by {@code state}
+     */
+    public static float determineFloat(long state) {
+        return ((state = ((state = (state ^ (state << 41 | state >>> 23) ^ (state << 17 | state >>> 47)) * 0x369DEA0F31A53F85L) ^ state >>> 37 ^ state >>> 25) * 0xDB4F0B9175AE2165L) >>> 40) * 0x1p-24f;
+    }
+
+    /**
+     * Returns a random double that is deterministic based on state; if state is the same on two calls to this, this
+     * will return the same float. This is expected to be called with a changing variable, e.g.
+     * {@code RNG.determineDouble(++state)}, where the increment for state should be odd but otherwise doesn't really
+     * matter. This should tolerate just about any increment, as long as it is odd. The period is 2 to the 64 if you
+     * increment or decrement by 1, but there are only 2 to the 62 possible doubles between 0 and 1, and this can only
+     * generate 2 to the 53 of them.
+     * @param state a variable that should be different every time you want a different random result;
+     *              using {@code RNG.determineDouble(++state)} is recommended to go forwards or
+     *              {@code RNG.determineDouble(--state)} to generate numbers in reverse order
+     * @return a pseudo-random double between 0.0 (inclusive) and 1.0 (exclusive), determined by {@code state}
+     */
+    public static double determineDouble(long state) {
+        return (((state = ((state = (state ^ (state << 41 | state >>> 23) ^ (state << 17 | state >>> 47)) * 0x369DEA0F31A53F85L) ^ state >>> 37 ^ state >>> 25) * 0xDB4F0B9175AE2165L) ^ state >>> 28) & 0x1FFFFFFFFFFFFFL) * 0x1p-53;
+    }
+
 
     /**
      * Returns a double from an even distribution from min (inclusive) to max
@@ -684,9 +743,9 @@ public class RNG extends Random implements Serializable {
      */
     public long nextLong() {
         long z = state += 0x9E3779B97F4A7C15L;
-        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
-        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
-        return z ^ (z >>> 31);
+        z = (z ^ z >>> 30) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ z >>> 27) * 0x94D049BB133111EBL;
+        return z ^ z >>> 31;
     }
 
     /**
@@ -698,14 +757,12 @@ public class RNG extends Random implements Serializable {
      */
     public static long inverseNextLong(long out)
     {
-        out ^= out >>> 31;
-        out ^= out >>> 62;
+        out ^= out >>> 31 ^ out >>> 62;
         out *= 0x319642B2D24D8EC3L;
-        out ^= out >>> 27;
-        out ^= out >>> 54;
+        out ^= out >>> 27 ^ out >>> 54;
         out *= 0x96DE1B173F119089L;
-        out ^= out >>> 30;
-        return (out ^ out >>> 60) - 0x9E3779B97F4A7C15L;
+        out ^= out >>> 30 ^ out >>> 60;
+        return out - 0x9E3779B97F4A7C15L;
         //0x96DE1B173F119089L 0x319642B2D24D8EC3L 0xF1DE83E19937733DL
     }
 
@@ -1063,7 +1120,7 @@ public class RNG extends Random implements Serializable {
 
     @Override
     public int hashCode() {
-        return (int)(31 * (state ^ state >>> 32)) | 0; // stupid bitwise op needed to force GWT numbers to int
+        return (int)(state ^ state >>> 32);
     }
 
     /**
@@ -1129,5 +1186,4 @@ public class RNG extends Random implements Serializable {
 //        rng.setSeed(inv2);
 //        System.out.printf("Inverse 1: 0x%016X, Inverse 2: 0x%016X, distance: 0x%016X, equal: %b\n", inv1, inv2,distance(out1, out2), out2 == rng.nextLong());
 //    }
-
 }
