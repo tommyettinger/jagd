@@ -17,15 +17,11 @@ import java.util.List;
  * <br>
  * The input resistanceMap is considered the percent of opacity. This resistance
  * is on top of the resistance applied from the light spreading out. You can
- * obtain a resistance map easily with the DungeonUtility.generateResistances()
- * method, which uses defaults for common chars used in SquidLib, but you may
- * also want to create a resistance map manually if a given char means something
- * very different in your game. This is easy enough to do by looping over all the
- * x,y positions in your char[][] map and running a switch statement on each char,
- * assigning a double to the same x,y position in a double[][]. The value should
- * be between 0.0 (unblocked) for things light passes through, 1.0 (blocked) for
- * things light can't pass at all, and possibly other values if you have
- * translucent obstacles.
+ * obtain a resistance map by looping over all the x,y positions in your
+ * grid-based map and running a switch statement on each cell, assigning a double
+ * to the same x,y position in a double[][]. The value should be between 0.0
+ * (unblocked) for things light passes through, 1.0 (blocked) for things light
+ * can't pass at all, and possibly other values for translucent obstacles.
  * <br>
  * The returned light map is considered the percent of light in the cells.
  * <br>
@@ -50,6 +46,7 @@ import java.util.List;
  * create a Region with the same FOV map (or the same visible GridPoint2s).
  *
  * @author Eben Howard - http://squidpony.com - howard@squidpony.com
+ * @author Tommy Ettinger
  */
 public class FOV {
     protected static final GridPoint2[] 
@@ -73,16 +70,9 @@ public class FOV {
         final double y_d = y2 - y1;
         return Math.sqrt(x_d * x_d + y_d * y_d);
     }
-    public static double radiusSquared (double x1, double y1, double x2, double y2) {
-        final double x_d = x2 - x1;
-        final double y_d = y2 - y1;
-        return x_d * x_d + y_d * y_d;
-    }
+
     public static double radius (double x, double y) {
         return Math.sqrt(x * x + y * y);
-    }
-    public static double radiusSquared (double x, double y) {
-        return x * x + y * y;
     }
 
     /**
@@ -131,14 +121,28 @@ public class FOV {
      * calculations. The light will be treated as having infinite possible
      * radius.
      *
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light a non-null 2D double array that will have its contents overwritten, modified, and returned
-     * @param startx the horizontal component of the starting location
-     * @param starty the vertical component of the starting location
+     * @param startX the horizontal component of the starting location
+     * @param startY the vertical component of the starting location
      * @return the computed light grid (the same as {@code light})
      */
-    public static double[][] calculateFOV(double[][] resistanceMap, double[][] light, int startx, int starty) {
-        return reuseFOV(resistanceMap, light, startx, starty, Integer.MAX_VALUE);
+    public static double[][] reuseFOV(double[][] resistanceMap, double[][] light, int startX, int startY) {
+        return reuseFOV(resistanceMap, light, startX, startY, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Poorly named; use {@link #reuseFOV(double[][], double[][], int, int)} instead.
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
+     * @param light a non-null 2D double array that will have its contents overwritten, modified, and returned
+     * @param startX the horizontal component of the starting location
+     * @param startY the vertical component of the starting location
+     * @return the computed light grid (the same as {@code light})
+     * @see #reuseFOV(double[][], double[][], int, int) The correctly-named replacement method
+     */
+    @Deprecated
+    public static double[][] calculateFOV(double[][] resistanceMap, double[][] light, int startX, int startY) {
+        return reuseFOV(resistanceMap, light, startX, startY, Integer.MAX_VALUE);
     }
 
     /**
@@ -154,7 +158,7 @@ public class FOV {
      * of the origin cell. Radius determinations based on Euclidean
      * calculations.
      *
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
      * @param radius the distance the light will extend to
@@ -192,7 +196,7 @@ public class FOV {
      * The starting point for the calculation is considered to be at the center
      * of the origin cell. Radius determinations are determined by the provided
      * RadiusStrategy.
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light the grid of cells to assign to; may have existing values, and 0.0 is used to mean "unlit"
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
@@ -288,7 +292,7 @@ public class FOV {
      * <br>
      * The starting point for the calculation is considered to be at the center
      * of the origin cell.
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light the grid of cells to assign to; may have existing values, and 0.0 is used to mean "no line"
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
@@ -311,7 +315,7 @@ public class FOV {
      * <br>
      * The starting point for the calculation is considered to be at the center
      * of the origin cell.
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light the grid of cells to assign to; may have existing values, and 0.0 is used to mean "no line"
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
@@ -351,7 +355,7 @@ public class FOV {
      * RadiusStrategy.  A conical section of FOV is lit by this method if
      * span is greater than 0.
      *
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light the grid of cells to assign to; may have existing values, and 0.0 is used to mean "unlit"
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
@@ -384,7 +388,7 @@ public class FOV {
         return light;
     }
     
-    private static void doRippleFOV(double[][] lightMap, int ripple, int x, int y, int startx, int starty, double decay, double radius, double[][] map, boolean[][] indirect) {
+    private static void doRippleFOV(double[][] lightMap, int ripple, int x, int y, int startX, int startY, double decay, double radius, double[][] map, boolean[][] indirect) {
         final ArrayDeque<GridPoint2> dq = new ArrayDeque<>();
         int width = lightMap.length;
         int height = lightMap[0].length;
@@ -399,11 +403,11 @@ public class FOV {
                 int x2 = p.x + dir.x;
                 int y2 = p.y + dir.y;
                 if (x2 < 0 || x2 >= width || y2 < 0 || y2 >= height //out of bounds
-                        || radius(startx, starty, x2, y2) >= radius + 1) {//+1 to cover starting tile
+                        || radius(startX, startY, x2, y2) >= radius + 1) {//+1 to cover starting tile
                     continue;
                 }
 
-                double surroundingLight = nearRippleLight(x2, y2, ripple, startx, starty, decay, lightMap, map, indirect);
+                double surroundingLight = nearRippleLight(x2, y2, ripple, startX, startY, decay, lightMap, map, indirect);
                 if (lightMap[x2][y2] < surroundingLight) {
                     lightMap[x2][y2] = surroundingLight;
                     if (map[x2][y2] < 1) {//make sure it's not a wall
@@ -416,7 +420,7 @@ public class FOV {
 
 
 
-    private static void doRippleFOV(double[][] lightMap, int ripple, int x, int y, int startx, int starty, double decay, double radius, double[][] map, boolean[][] indirect, double angle, double span) {
+    private static void doRippleFOV(double[][] lightMap, int ripple, int x, int y, int startX, int startY, double decay, double radius, double[][] map, boolean[][] indirect, double angle, double span) {
         final ArrayDeque<GridPoint2> dq = new ArrayDeque<GridPoint2>();
         int width = lightMap.length;
         int height = lightMap[0].length;
@@ -431,15 +435,15 @@ public class FOV {
                 int x2 = p.x + dir.x;
                 int y2 = p.y + dir.y;
                 if (x2 < 0 || x2 >= width || y2 < 0 || y2 >= height //out of bounds
-                        || radius(startx, starty, x2, y2) >= radius + 1) {//+1 to cover starting tile
+                        || radius(startX, startY, x2, y2) >= radius + 1) {//+1 to cover starting tile
                     continue;
                 }
-                double newAngle = atan2_(y2 - starty, x2 - startx);
+                double newAngle = atan2_(y2 - startY, x2 - startX);
                 if (newAngle > span * 0.5 && newAngle < 1.0 - span * 0.5) 
                     continue;
 //if (Math.abs(MathExtras.remainder(angle - newAngle, Math.PI * 2)) > span * 0.5)
 
-                double surroundingLight = nearRippleLight(x2, y2, ripple, startx, starty, decay, lightMap, map, indirect);
+                double surroundingLight = nearRippleLight(x2, y2, ripple, startX, startY, decay, lightMap, map, indirect);
                 if (lightMap[x2][y2] < surroundingLight) {
                     lightMap[x2][y2] = surroundingLight;
                     if (map[x2][y2] < 1) {//make sure it's not a wall
@@ -450,8 +454,8 @@ public class FOV {
         }
     }
 
-    private static double nearRippleLight(int x, int y, int rippleNeighbors, int startx, int starty, double decay, double[][] lightMap, double[][] map, boolean[][] indirect) {
-        if (x == startx && y == starty) {
+    private static double nearRippleLight(int x, int y, int rippleNeighbors, int startX, int startY, double decay, double[][] lightMap, double[][] map, boolean[][] indirect) {
+        if (x == startX && y == startY) {
             return 1;
         }
         int width = lightMap.length;
@@ -463,12 +467,12 @@ public class FOV {
             int x2 = x + di.x;
             int y2 = y + di.y;
             if (x2 >= 0 && x2 < width && y2 >= 0 && y2 < height) {
-                tmpDistance = radius(startx, starty, x2, y2);
+                tmpDistance = radius(startX, startY, x2, y2);
                 int idx = 0;
                 for(int i = 0; i < neighbors.size() && i <= rippleNeighbors; i++)
                 {
                     c = neighbors.get(i);
-                    testDistance = radius(startx, starty, c.x, c.y);
+                    testDistance = radius(startX, startY, c.x, c.y);
                     if(tmpDistance < testDistance) {
                         break;
                     }
@@ -502,14 +506,14 @@ public class FOV {
     }
 
     private static void shadowCast(int xx, int xy, int yx, int yy,
-                                   double radius, int startx, int starty, double decay, double[][] lightMap,
+                                   double radius, int startX, int startY, double decay, double[][] lightMap,
                                    double[][] map) {
-	    shadowCast(1, 1.0, 0.0, xx, xy, yx, yy, radius, startx, starty, decay, lightMap, map,
+	    shadowCast(1, 1.0, 0.0, xx, xy, yx, yy, radius, startX, startY, decay, lightMap, map,
                 0, 0, lightMap.length, lightMap[0].length);
     }
 
     private static void shadowCastBinary(int row, double start, double end, int xx, int xy, int yx, int yy,
-                                         double radius, int startx, int starty, double decay, double[][] lightMap,
+                                         double radius, int startX, int startY, double decay, double[][] lightMap,
                                          double[][] map,
                                          int minX, int minY, int maxX, int maxY) {
         double newStart = 0;
@@ -521,8 +525,8 @@ public class FOV {
         for (int distance = row; distance <= radius && distance < maxX - minX + maxY - minY && !blocked; distance++) {
             int deltaY = -distance;
             for (int deltaX = -distance; deltaX <= 0; deltaX++) {
-                int currentX = startx + deltaX * xx + deltaY * xy;
-                int currentY = starty + deltaX * yx + deltaY * yy;
+                int currentX = startX + deltaX * xx + deltaY * xy;
+                int currentY = startY + deltaX * yx + deltaY * yy;
                 double leftSlope = (deltaX - 0.5f) / (deltaY + 0.5f);
                 double rightSlope = (deltaX + 0.5f) / (deltaY - 0.5f);
 
@@ -544,7 +548,7 @@ public class FOV {
                 } else {
                     if (map[currentX][currentY] >= 1 && distance < radius) {//hit a wall within sight line
                         blocked = true;
-                        shadowCastBinary(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startx, starty, decay,
+                        shadowCastBinary(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startX, startY, decay,
                                 lightMap, map, minX, minY, maxX, maxY);
                         newStart = rightSlope;
                     }
@@ -554,7 +558,7 @@ public class FOV {
     }
 
     private static boolean shadowCastCheck(int row, double start, double end, int xx, int xy, int yx, int yy,
-                                         double radius, int startx, int starty, double decay, double[][] lightMap,
+                                         double radius, int startX, int startY, double decay, double[][] lightMap,
                                          double[][] map,
                                          int minX, int minY, int maxX, int maxY, int targetX, int targetY) {
         double newStart = 0;
@@ -566,8 +570,8 @@ public class FOV {
         for (int distance = row; distance <= radius && distance < maxX - minX + maxY - minY && !blocked; distance++) {
             int deltaY = -distance;
             for (int deltaX = -distance; deltaX <= 0; deltaX++) {
-                int currentX = startx + deltaX * xx + deltaY * xy;
-                int currentY = starty + deltaX * yx + deltaY * yy;
+                int currentX = startX + deltaX * xx + deltaY * xy;
+                int currentY = startY + deltaX * yx + deltaY * yy;
                 double leftSlope = (deltaX - 0.5f) / (deltaY + 0.5f);
                 double rightSlope = (deltaX + 0.5f) / (deltaY - 0.5f);
 
@@ -589,7 +593,7 @@ public class FOV {
                 } else {
                     if (map[currentX][currentY] >= 1.0 && distance < radius) {//hit a wall within sight line
                         blocked = true;
-                        if(shadowCastCheck(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startx, starty, decay,
+                        if(shadowCastCheck(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startX, startY, decay,
                                 lightMap, map, minX, minY, maxX, maxY, targetX, targetY))
                             return true;
                         newStart = rightSlope;
@@ -601,7 +605,7 @@ public class FOV {
     }
 
     private static void shadowCast(int row, double start, double end, int xx, int xy, int yx, int yy,
-                                   double radius, int startx, int starty, double decay, double[][] lightMap,
+                                   double radius, int startX, int startY, double decay, double[][] lightMap,
                                    double[][] map, int minX, int minY, int maxX, int maxY) {
         double newStart = 0;
         if (start < end) {
@@ -611,8 +615,8 @@ public class FOV {
         for (int distance = row; distance <= radius && distance < maxX - minX + maxY - minY && !blocked; distance++) {
             int deltaY = -distance;
             for (int deltaX = -distance; deltaX <= 0; deltaX++) {
-                int currentX = startx + deltaX * xx + deltaY * xy;
-                int currentY = starty + deltaX * yx + deltaY * yy;
+                int currentX = startX + deltaX * xx + deltaY * xy;
+                int currentY = startY + deltaX * yx + deltaY * yy;
                 double leftSlope = (deltaX - 0.5f) / (deltaY + 0.5f);
                 double rightSlope = (deltaX + 0.5f) / (deltaY - 0.5f);
 
@@ -637,7 +641,7 @@ public class FOV {
                 } else {
                     if (map[currentX][currentY] >= 1 && distance < radius) {//hit a wall within sight line
                         blocked = true;
-                        shadowCast(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startx, starty, decay,
+                        shadowCast(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startX, startY, decay,
                                 lightMap, map, minX, minY, maxX, maxY);
                         newStart = rightSlope;
                     }
@@ -646,7 +650,7 @@ public class FOV {
         }
     }
     private static double[][] shadowCastLimited(int row, double start, double end, int xx, int xy, int yx, int yy,
-                                                double radius, int startx, int starty, double decay, double[][] lightMap,
+                                                double radius, int startX, int startY, double decay, double[][] lightMap,
                                                 double[][] map, double angle, double span) {
         double newStart = 0;
         if (start < end) {
@@ -659,8 +663,8 @@ public class FOV {
         for (int distance = row; distance <= radius && distance < width + height && !blocked; distance++) {
             int deltaY = -distance;
             for (int deltaX = -distance; deltaX <= 0; deltaX++) {
-                int currentX = startx + deltaX * xx + deltaY * xy;
-                int currentY = starty + deltaX * yx + deltaY * yy;
+                int currentX = startX + deltaX * xx + deltaY * xy;
+                int currentY = startY + deltaX * yx + deltaY * yy;
                 double leftSlope = (deltaX - 0.5f) / (deltaY + 0.5f);
                 double rightSlope = (deltaX + 0.5f) / (deltaY - 0.5f);
 
@@ -670,7 +674,7 @@ public class FOV {
                     break;
                 }
                 double deltaRadius = radius(deltaX, deltaY),
-                        at2 = Math.abs(angle - atan2_(currentY - starty, currentX - startx));// + 1.0) % 1.0;
+                        at2 = Math.abs(angle - atan2_(currentY - startY, currentX - startX));// + 1.0) % 1.0;
                 //check if it's within the lightable area and light if needed
                 if (deltaRadius <= radius
                         && (at2 <= span * 0.5
@@ -689,7 +693,7 @@ public class FOV {
                 } else {
                     if (map[currentX][currentY] >= 1 && distance < radius) {//hit a wall within sight line
                         blocked = true;
-                        lightMap = shadowCastLimited(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startx, starty, decay, lightMap, map, angle, span);
+                        lightMap = shadowCastLimited(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startX, startY, decay, lightMap, map, angle, span);
                         newStart = rightSlope;
                     }
                 }
@@ -716,7 +720,7 @@ public class FOV {
      * {@link #reuseFOV(double[][], double[][], int, int, double)}; otherwise
      * may produce conical shapes (potentially more than one, or overlapping ones).
      *
-     * @param resistanceMap the grid of cells to calculate on; the kind made by DungeonUtility.generateResistances()
+     * @param resistanceMap the grid of cells to calculate on; 1.0 resists all light, 0.0 does not resist
      * @param light the grid of cells to assign to; may have existing values, and 0.0 is used to mean "unlit"
      * @param startX the horizontal component of the starting location
      * @param startY the vertical component of the starting location
@@ -757,7 +761,7 @@ public class FOV {
     }
 
     private static double[][] shadowCastPersonalized(int row, double start, double end, int xx, int xy, int yx, int yy,
-                                                     double radius, int startx, int starty, double[][] lightMap,
+                                                     double radius, int startX, int startY, double[][] lightMap,
                                                      double[][] map, double angle, final double[] directionRanges) {
         double newStart = 0;
         if (start < end) {
@@ -770,8 +774,8 @@ public class FOV {
         for (int distance = row; distance <= radius && distance < width + height && !blocked; distance++) {
             int deltaY = -distance;
             for (int deltaX = -distance; deltaX <= 0; deltaX++) {
-                int currentX = startx + deltaX * xx + deltaY * xy;
-                int currentY = starty + deltaX * yx + deltaY * yy;
+                int currentX = startX + deltaX * xx + deltaY * xy;
+                int currentY = startY + deltaX * yx + deltaY * yy;
                 double leftSlope = (deltaX - 0.5f) / (deltaY + 0.5f);
                 double rightSlope = (deltaX + 0.5f) / (deltaY - 0.5f);
 
@@ -780,7 +784,7 @@ public class FOV {
                 } else if (end > leftSlope) {
                     break;
                 }
-                double at2 = Math.abs(angle - atan2_(currentY - starty, currentX - startx)) * 8.0,
+                double at2 = Math.abs(angle - atan2_(currentY - startY, currentX - startX)) * 8.0,
                         deltaRadius = radius(deltaX, deltaY);
                 int ia = (int)(at2), low = ia & 7, high = ia + 1 & 7;
                 double a = at2 - ia, adjRadius = (1.0 - a) * directionRanges[low] + a * directionRanges[high];
@@ -799,7 +803,7 @@ public class FOV {
                 } else {
                     if (map[currentX][currentY] >= 1 && distance < adjRadius) {//hit a wall within sight line
                         blocked = true;
-                        lightMap = shadowCastPersonalized(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startx, starty, lightMap, map, angle, directionRanges);
+                        lightMap = shadowCastPersonalized(distance + 1, start, leftSlope, xx, xy, yx, yy, radius, startX, startY, lightMap, map, angle, directionRanges);
                         newStart = rightSlope;
                     }
                 }
@@ -812,7 +816,7 @@ public class FOV {
      * Adds an FOV map to another in the simplest way possible; does not check line-of-sight between FOV maps.
      * Clamps the highest value for any single position at 1.0. Modifies the basis parameter in-place and makes no
      * allocations; this is different from {@link #addFOVs(double[][][])}, which creates a new 2D array.
-     * @param basis a 2D double array, which can be empty or returned by calculateFOV() or reuseFOV(); modified!
+     * @param basis a 2D double array, which can be empty or returned by reuseFOV(); modified!
      * @param addend another 2D double array that will be added into basis; this one will not be modified
      * @return the sum of the 2D double arrays passed, using the dimensions of basis if they don't match
      */
@@ -828,7 +832,7 @@ public class FOV {
     /**
      * Adds multiple FOV maps together in the simplest way possible; does not check line-of-sight between FOV maps.
      * Clamps the highest value for any single position at 1.0. Allocates a new 2D double array and returns it.
-     * @param maps an array or vararg of 2D double arrays, each usually returned by calculateFOV()
+     * @param maps an array or vararg of 2D double arrays, each usually returned by reuseFOV()
      * @return the sum of all the 2D double arrays passed, using the dimensions of the first if they don't all match
      */
     public static double[][] addFOVs(double[][]... maps)
@@ -858,7 +862,7 @@ public class FOV {
      * Adds multiple FOV maps to basis cell-by-cell, modifying basis; does not check line-of-sight between FOV maps.
      * Clamps the highest value for any single position at 1.0. Returns basis without allocating new objects.
      * @param basis a 2D double array that will be modified by adding values in maps to it and clamping to 1.0 or less 
-     * @param maps an array or vararg of 2D double arrays, each usually returned by calculateFOV()
+     * @param maps an array or vararg of 2D double arrays, each usually returned by reuseFOV()
      * @return basis, with all elements in all of maps added to the corresponding cells and clamped
      */
     public static double[][] addFOVsInto(double[][] basis, double[][]... maps) {
@@ -883,7 +887,7 @@ public class FOV {
      * Adds multiple FOV maps together in the simplest way possible; does not check line-of-sight between FOV maps.
      * Clamps the highest value for any single position at 1.0. Allocates a new 2D double array and returns it.
      * @param maps an Iterable of 2D double arrays (most collections implement Iterable),
-     *             each usually returned by calculateFOV()
+     *             each usually returned by reuseFOV()
      * @return the sum of all the 2D double arrays passed, using the dimensions of the first if they don't all match
      */
     public static double[][] addFOVs(Iterable<double[][]> maps)
@@ -921,7 +925,7 @@ public class FOV {
      * is calculated by {@link #reuseLOS(double[][], double[][], int, int)}, using the same resistance map used to
      * calculate the FOV maps. Clamps the highest value for any single position at 1.0.
      * @param losMap an LOS map such as one generated by {@link #reuseLOS(double[][], double[][], int, int)}
-     * @param maps an array or vararg of 2D double arrays, each usually returned by calculateFOV()
+     * @param maps an array or vararg of 2D double arrays, each usually returned by reuseFOV()
      * @return the sum of all the 2D double arrays in maps where a cell was visible in losMap
      */
     public static double[][] mixVisibleFOVs(double[][] losMap, double[][]... maps)
@@ -957,7 +961,7 @@ public class FOV {
      * calculate the FOV maps. Clamps the highest value for any single position at 1.0.
      * @param losMap an LOS map such as one generated by {@link #reuseLOS(double[][], double[][], int, int)}
      * @param basis an existing 2D double array that should have matching width and height to losMap; will be modified
-     * @param maps an array or vararg of 2D double arrays, each usually returned by calculateFOV()
+     * @param maps an array or vararg of 2D double arrays, each usually returned by reuseFOV()
      * @return the sum of all the 2D double arrays in maps where a cell was visible in losMap
      */
     public static double[][] mixVisibleFOVsInto(double[][] losMap, double[][] basis, double[][]... maps)
@@ -993,7 +997,7 @@ public class FOV {
      * is calculated by {@link #reuseLOS(double[][], double[][], int, int)}, using the same resistance map used to
      * calculate the FOV maps. Clamps the highest value for any single position at 1.0.
      * @param losMap an LOS map such as one generated by {@link #reuseLOS(double[][], double[][], int, int)}
-     * @param maps an Iterable of 2D double arrays, each usually returned by calculateFOV()
+     * @param maps an Iterable of 2D double arrays, each usually returned by reuseFOV()
      * @return the sum of all the 2D double arrays in maps where a cell was visible in losMap
      */
     public static double[][] mixVisibleFOVs(double[][] losMap, Iterable<double[][]> maps)
