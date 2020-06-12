@@ -11,19 +11,23 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Random;
 
 import static com.badlogic.gdx.utils.NumberUtils.intBitsToFloat;
 
 /**
  * A wrapper class for working with random number generators in a more friendly way.
- * <p>
+ * <br>
  * Includes methods for getting values between two numbers and for getting
  * random elements from a collection or array. There are methods to shuffle
- * a collection and to get a random ordering that can be applied as one shuffle
- * across multiple collections, such as via the reorder() methods on various collections
- * from this library. There's methods for getting curved distributions, and more.
+ * a collection and to get a random ordering. There's methods for getting
+ * curved distributions, inclusive float and double generation, and more.
+ * <br>
+ * This implements {@link Random} but does not synchronize any methods,
+ * because that slows down that JDK class quite a bit. You should be able
+ * to plug in an RNG where existing code expects a Random, but the RNG API
+ * has more features.
+ * 
  * @author Eben Howard - http://squidpony.com - howard@squidpony.com
  * @author Tommy Ettinger
  * @author smelC
@@ -205,6 +209,28 @@ public class RNG extends Random implements Serializable {
     }
 
     /**
+     * Returns a value between min (inclusive) and max (inclusive).
+     *
+     * @param min the minimum bound on the return value (inclusive)
+     * @param max the maximum bound on the return value (exclusive)
+     * @return the found value
+     */
+    public int betweenInclusive(int min, int max) {
+        return nextInt(max + 1 - min) + min;
+    }
+
+    /**
+     * Returns a value between min (inclusive) and max (inclusive).
+     *
+     * @param min the minimum bound on the return value (inclusive)
+     * @param max the maximum bound on the return value (exclusive)
+     * @return the found value
+     */
+    public long betweenInclusive(long min, long max) {
+        return nextLong(max + 1 - min) + min;
+    }
+
+    /**
      * Returns the average of a number of randomly selected numbers from the
      * provided range, with min being inclusive and max being exclusive. It will
      * sample the number of times passed in as the third parameter.
@@ -265,12 +291,9 @@ public class RNG extends Random implements Serializable {
      * Set like TreeSet if you want predictable results. Any List or Queue should be fine. Map does not implement
      * Collection, thank you very much Java library designers, so you can't actually pass a Map to this, though you can
      * pass the keys or values. If coll is empty, returns null.
-     * <p>
-     * <p>
+     * <br>
      * Requires iterating through a random amount of coll's elements, so performance depends on the size of coll but is
-     * likely to be decent, as long as iteration isn't unusually slow. This replaces {@code getRandomElement(Queue)},
-     * since Queue implements Collection and the older Queue-using implementation was probably less efficient.
-     * </p>
+     * likely to be decent, as long as iteration isn't unusually slow.
      *
      * @param <T>  the type of the returned object
      * @param coll the Collection to get an element from; remember, Map does not implement Collection
@@ -287,78 +310,6 @@ public class RNG extends Random implements Serializable {
         while (n-- >= 0 && it.hasNext())
             t = it.next();
         return t;
-    }
-    
-    /**
-     * Get an Iterable that starts at a random location in list and continues on through list in its current order.
-     * Loops around to the beginning after it gets to the end, stops when it returns to the starting location.
-     * <br>
-     * You should not modify {@code list} while you use the returned reference. And there'll be no
-     * ConcurrentModificationException to detect such erroneous uses.
-     *
-     * @param list A list <b>with a constant-time {@link List#get(int)} method</b> (otherwise performance degrades).
-     * @return An {@link Iterable} that iterates over {@code list} but start at
-     * a random index. If the chosen index is {@code i}, the iterator
-     * will return:
-     * {@code list[i]; list[i+1]; ...; list[list.length() - 1]; list[0]; list[i-1]}
-     */
-    public <T> Iterable<T> getRandomStartIterable(final List<T> list) {
-        final int sz = list.size();
-        if (sz == 0)
-            return Collections.<T>emptyList();
-
-        /*
-         * Here's a tricky bit: Defining 'start' here means that every Iterator
-         * returned by the returned Iterable will have the same iteration order.
-         * In other words, if you use more than once the returned Iterable,
-         * you'll will see elements in the same order every time, which is
-         * desirable.
-         */
-        final int start = nextInt(sz);
-
-        return new Iterable<T>() {
-            @Override
-            public Iterator<T> iterator() {
-                return new Iterator<T>() {
-
-                    int next = -1;
-
-                    @Override
-                    public boolean hasNext() {
-                        return next != start;
-                    }
-
-                    @Override
-                    public T next() {
-                        if (next == start)
-                            throw new NoSuchElementException("Iteration terminated; check hasNext() before next()");
-                        if (next == -1)
-                            /* First call */
-                            next = start;
-                        final T result = list.get(next);
-                        if (next == sz - 1)
-                            /*
-                             * Reached the list's end, let's continue from the list's
-                             * left.
-                             */
-                            next = 0;
-                        else
-                            next++;
-                        return result;
-                    }
-
-                    @Override
-                    public void remove() {
-                        throw new UnsupportedOperationException("Remove is not supported from a randomStartIterable");
-                    }
-
-                    @Override
-                    public String toString() {
-                        return "RandomStartIterator at index " + next;
-                    }
-                };
-            }
-        };
     }
 
 
@@ -622,6 +573,7 @@ public class RNG extends Random implements Serializable {
      * terminates at -1 and 1.
      * @return a value from the Gaussian distribution
      */
+    @Override
     public double nextGaussian() {
         if (haveNextNextGaussian) {
             haveNextNextGaussian = false;
@@ -646,6 +598,7 @@ public class RNG extends Random implements Serializable {
      *
      * @return a double between 0.0 (inclusive) and 0.9999999999999999 (inclusive)
      */
+    @Override
     public double nextDouble() {
         return (nextLong() & 0x1fffffffffffffL) * 0x1p-53;
     }
@@ -668,6 +621,7 @@ public class RNG extends Random implements Serializable {
      *
      * @return a float between 0f (inclusive) and 0.99999994f (inclusive)
      */
+    @Override
     public float nextFloat() {
         return (nextLong() & 0xFFFFFF) * 0x1p-24f; 
     }
@@ -732,6 +686,7 @@ public class RNG extends Random implements Serializable {
      * You can also consider calling {@link #next(int)} with 1 as the argument to get either 0 or 1.
      * @return a random boolean.
      */
+    @Override
     public boolean nextBoolean() {
         return nextLong() < 0L;
     }
@@ -741,6 +696,7 @@ public class RNG extends Random implements Serializable {
      *
      * @return a 64-bit random long.
      */
+    @Override
     public long nextLong() {
         long z = state += 0x9E3779B97F4A7C15L;
         z = (z ^ z >>> 30) * 0xBF58476D1CE4E5B9L;
@@ -780,20 +736,28 @@ public class RNG extends Random implements Serializable {
     }
     
     /**
-     * Returns a random long below the given bound, or 0 if the bound is 0 or
-     * negative.
+     * Exclusive on bound (which must be positive), with an inner bound of 0.
+     * If bound is negative or 0 this always returns 0.
+     * <br>
+     * Credit for this method goes to <a href="https://oroboro.com/large-random-in-range/">Rafael Baptista's blog</a>
+     * for the original idea, and the JDK10 Math class' usage of Karatsuba multiplication for the current algorithm. 
+     * This method is drastically faster than the previous implementation when the bound varies often (roughly 4x
+     * faster, possibly more). It also always gets exactly one random long, so by default it advances the state as much
+     * as {@link #nextLong()}; subclasses can generate two ints instead of one long if they prefer.
      *
-     * @param bound the upper bound (exclusive)
-     * @return the found number
+     * @param bound the outer exclusive bound; should be positive, otherwise this always returns 0L
+     * @return a random long between 0 (inclusive) and bound (exclusive)
      */
-    public long nextLong(final long bound) {
+    public long nextLong(long bound) {
+        long rand = nextLong();
         if (bound <= 0) return 0;
-        long threshold = (0x7fffffffffffffffL - bound + 1) % bound;
-        for (; ; ) {
-            long bits = nextLong() & 0x7fffffffffffffffL;
-            if (bits >= threshold)
-                return bits % bound;
-        }
+        final long randLow = rand & 0xFFFFFFFFL;
+        final long boundLow = bound & 0xFFFFFFFFL;
+        rand >>>= 32;
+        bound >>>= 32;
+        final long a = rand * bound;
+        final long b = randLow * boundLow;
+        return (((b >>> 32) + (rand + randLow) * (bound + boundLow) - a - b) >>> 32) + a;
     }
     
     /**
@@ -810,6 +774,7 @@ public class RNG extends Random implements Serializable {
      * @param bound the outer bound (exclusive), can be negative or positive
      * @return the found number
      */
+    @Override
     public int nextInt(final int bound) {
         return (int) ((bound * (nextLong() & 0x7FFFFFFFL)) >> 31);
     }
@@ -841,6 +806,7 @@ public class RNG extends Random implements Serializable {
      * @param  bytes the byte array to fill with random bytes; cannot be null, will be modified
      * @throws NullPointerException if the byte array is null
      */
+    @Override
     public void nextBytes(final byte[] bytes) {
         for (int i = 0; i < bytes.length; )
             for (long r = nextLong(), n = Math.min(bytes.length - i, 8); n-- > 0; r >>>= 8)
@@ -852,6 +818,7 @@ public class RNG extends Random implements Serializable {
      *
      * @return a 32-bit random int.
      */
+    @Override
     public int nextInt() {
         return next(32);
     }
@@ -862,6 +829,7 @@ public class RNG extends Random implements Serializable {
      * @param bits 1 to 32
      * @return a random number that fits in the specified number of bits.
      */
+    @Override
     public int next(int bits) {
         long z = state += 0x9E3779B97F4A7C15L;
         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
